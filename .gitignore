@@ -1,0 +1,37 @@
+# Build output
+target/
+
+# Uploads pipeline (generated at runtime)
+uploads/
+
+# Maven wrapper jar
+.mvn/wrapper/maven-wrapper.jar
+
+# IDEs
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+*.code-workspace
+
+# Metals / Bloop (Java/Scala LSP artefacts)
+.metals/
+.bloop/
+
+# macOS
+.DS_Store
+**/.DS_Store
+
+# Windows
+Thumbs.db
+ehthumbs.db
+
+# Logs & JVM crash files
+*.log
+logs/
+hs_err_pid*.log
+replay_pid*.log
+
+# Compiled class files
+*.class

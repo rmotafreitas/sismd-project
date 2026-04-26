@@ -1,0 +1,196 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.image.*?>
+<?import javafx.scene.layout.*?>
+
+<BorderPane xmlns:fx="http://javafx.com/fxml" fx:controller="com.sismd.ui.MainController"
+            style="-fx-background-color: #f1f5f9;"
+            prefWidth="960" prefHeight="700">
+
+    <!-- TOP BAR -->
+    <top>
+        <HBox style="-fx-background-color: #ffffff; -fx-border-color: #e2e8f0; -fx-border-width: 0 0 1 0;
+                     -fx-padding: 10 20; -fx-alignment: CENTER_LEFT; -fx-spacing: 10;">
+            <Label text="SISMD" style="-fx-text-fill: #2563eb; -fx-font-size: 15px; -fx-font-weight: bold;"/>
+            <Label text="Image Processing Studio" style="-fx-text-fill: #94a3b8; -fx-font-size: 12px;"/>
+            <HBox HBox.hgrow="ALWAYS"/>
+            <Button fx:id="btnReset" text="Reset" onAction="#handleReset"
+                    style="-fx-background-color: #fef2f2; -fx-text-fill: #dc2626; -fx-font-weight: bold;
+                           -fx-background-radius: 6; -fx-padding: 5 14; -fx-cursor: hand; -fx-font-size: 11px;
+                           -fx-border-color: #fecaca; -fx-border-radius: 6;"/>
+            <Label fx:id="lblStatus" text="Ready"
+                   style="-fx-text-fill: #64748b; -fx-font-size: 11px; -fx-font-style: italic;"/>
+        </HBox>
+    </top>
+
+    <!-- MAIN CONTENT -->
+    <center>
+        <HBox spacing="12" style="-fx-padding: 14 14 22 14;" alignment="TOP_LEFT">
+
+            <!-- ── INPUT PANEL ── -->
+            <VBox spacing="10" HBox.hgrow="ALWAYS"
+                  style="-fx-background-color: #ffffff; -fx-border-color: #e2e8f0; -fx-border-radius: 8;
+                         -fx-background-radius: 8; -fx-padding: 14;
+                         -fx-effect: dropshadow(gaussian,#0000000a,6,0,0,2);">
+
+                <HBox alignment="CENTER_LEFT" spacing="6">
+                    <Label text="●" style="-fx-text-fill: #2563eb; -fx-font-size: 9px;"/>
+                    <Label text="INPUT" style="-fx-text-fill: #2563eb; -fx-font-size: 11px; -fx-font-weight: bold;"/>
+                </HBox>
+
+                <StackPane fx:id="inputPreviewPane"
+                           style="-fx-background-color: #f8fafc; -fx-border-color: #e2e8f0; -fx-border-radius: 6;
+                                  -fx-background-radius: 6; -fx-min-height: 190; -fx-max-height: 190; -fx-cursor: hand;">
+                    <ImageView fx:id="inputImageView" fitWidth="280" fitHeight="190" preserveRatio="true"/>
+                    <Label fx:id="inputPlaceholder" text="Click to choose an image…"
+                           style="-fx-text-fill: #cbd5e1; -fx-font-size: 12px;"/>
+                </StackPane>
+
+                <VBox spacing="0"
+                      style="-fx-background-color: #f8fafc; -fx-border-color: #e2e8f0; -fx-border-radius: 6;
+                             -fx-background-radius: 6; -fx-padding: 8 10;">
+                    <HBox style="-fx-padding: 3 0;">
+                        <Label text="File" style="-fx-text-fill: #94a3b8; -fx-font-size: 11px;" minWidth="80"/>
+                        <Label fx:id="lblInputFile" text="—" style="-fx-text-fill: #1e293b; -fx-font-size: 11px;" HBox.hgrow="ALWAYS"/>
+                    </HBox>
+                    <Separator style="-fx-opacity: 0.4;"/>
+                    <HBox style="-fx-padding: 3 0;">
+                        <Label text="Format" style="-fx-text-fill: #94a3b8; -fx-font-size: 11px;" minWidth="80"/>
+                        <Label fx:id="lblInputFormat" text="—" style="-fx-text-fill: #1e293b; -fx-font-size: 11px;"/>
+                    </HBox>
+                    <Separator style="-fx-opacity: 0.4;"/>
+                    <HBox style="-fx-padding: 3 0;">
+                        <Label text="Size" style="-fx-text-fill: #94a3b8; -fx-font-size: 11px;" minWidth="80"/>
+                        <Label fx:id="lblInputSize" text="—" style="-fx-text-fill: #1e293b; -fx-font-size: 11px;"/>
+                    </HBox>
+                    <Separator style="-fx-opacity: 0.4;"/>
+                    <HBox style="-fx-padding: 3 0;">
+                        <Label text="Dimensions" style="-fx-text-fill: #94a3b8; -fx-font-size: 11px;" minWidth="80"/>
+                        <Label fx:id="lblInputDimensions" text="—" style="-fx-text-fill: #1e293b; -fx-font-size: 11px;"/>
+                    </HBox>
+                    <Separator style="-fx-opacity: 0.4;"/>
+                    <HBox style="-fx-padding: 3 0;">
+                        <Label text="Pixels" style="-fx-text-fill: #94a3b8; -fx-font-size: 11px;" minWidth="80"/>
+                        <Label fx:id="lblInputPixels" text="—" style="-fx-text-fill: #1e293b; -fx-font-size: 11px;"/>
+                    </HBox>
+                </VBox>
+
+                <VBox spacing="6">
+                    <Button fx:id="btnChoose" text="Choose Image…" maxWidth="Infinity" onAction="#handleChooseFile"
+                            style="-fx-background-color: #2563eb; -fx-text-fill: white; -fx-font-weight: bold;
+                                   -fx-background-radius: 6; -fx-padding: 7; -fx-cursor: hand; -fx-font-size: 12px;"/>
+                    <Button fx:id="btnProcess" text="Apply Histogram Equalization" maxWidth="Infinity"
+                            onAction="#handleProcess" disable="true"
+                            style="-fx-background-color: #16a34a; -fx-text-fill: white; -fx-font-weight: bold;
+                                   -fx-background-radius: 6; -fx-padding: 7; -fx-cursor: hand; -fx-font-size: 12px;"/>
+                    <Button fx:id="btnOpenInput" text="Open in Viewer" maxWidth="Infinity"
+                            onAction="#handleOpenInput" disable="true"
+                            style="-fx-background-color: #f8fafc; -fx-text-fill: #475569; -fx-font-weight: bold;
+                                   -fx-background-radius: 6; -fx-padding: 7; -fx-cursor: hand; -fx-font-size: 12px;
+                                   -fx-border-color: #cbd5e1; -fx-border-radius: 6;"/>
+                </VBox>
+            </VBox>
+
+            <!-- ── OUTPUT PANEL ── -->
+            <VBox spacing="10" HBox.hgrow="ALWAYS"
+                  style="-fx-background-color: #ffffff; -fx-border-color: #e2e8f0; -fx-border-radius: 8;
+                         -fx-background-radius: 8; -fx-padding: 14;
+                         -fx-effect: dropshadow(gaussian,#0000000a,6,0,0,2);">
+
+                <HBox alignment="CENTER_LEFT" spacing="6">
+                    <Label text="●" style="-fx-text-fill: #16a34a; -fx-font-size: 9px;"/>
+                    <Label text="OUTPUT" style="-fx-text-fill: #16a34a; -fx-font-size: 11px; -fx-font-weight: bold;"/>
+                </HBox>
+
+                <StackPane fx:id="outputPreviewPane"
+                           style="-fx-background-color: #f8fafc; -fx-border-color: #e2e8f0; -fx-border-radius: 6;
+                                  -fx-background-radius: 6; -fx-min-height: 190; -fx-max-height: 190;">
+                    <ImageView fx:id="outputImageView" fitWidth="280" fitHeight="190" preserveRatio="true"/>
+                    <Label fx:id="outputPlaceholder" text="Output will appear here"
+                           style="-fx-text-fill: #cbd5e1; -fx-font-size: 12px;"/>
+                </StackPane>
+
+                <VBox spacing="0"
+                      style="-fx-background-color: #f8fafc; -fx-border-color: #e2e8f0; -fx-border-radius: 6;
+                             -fx-background-radius: 6; -fx-padding: 8 10;">
+                    <HBox style="-fx-padding: 3 0;">
+                        <Label text="File" style="-fx-text-fill: #94a3b8; -fx-font-size: 11px;" minWidth="80"/>
+                        <Label fx:id="lblOutputFile" text="—" style="-fx-text-fill: #1e293b; -fx-font-size: 11px;"/>
+                    </HBox>
+                    <Separator style="-fx-opacity: 0.4;"/>
+                    <HBox style="-fx-padding: 3 0;">
+                        <Label text="Format" style="-fx-text-fill: #94a3b8; -fx-font-size: 11px;" minWidth="80"/>
+                        <Label fx:id="lblOutputFormat" text="—" style="-fx-text-fill: #1e293b; -fx-font-size: 11px;"/>
+                    </HBox>
+                    <Separator style="-fx-opacity: 0.4;"/>
+                    <HBox style="-fx-padding: 3 0;">
+                        <Label text="Size" style="-fx-text-fill: #94a3b8; -fx-font-size: 11px;" minWidth="80"/>
+                        <Label fx:id="lblOutputSize" text="—" style="-fx-text-fill: #1e293b; -fx-font-size: 11px;"/>
+                    </HBox>
+                    <Separator style="-fx-opacity: 0.4;"/>
+                    <HBox style="-fx-padding: 3 0;">
+                        <Label text="Dimensions" style="-fx-text-fill: #94a3b8; -fx-font-size: 11px;" minWidth="80"/>
+                        <Label fx:id="lblOutputDimensions" text="—" style="-fx-text-fill: #1e293b; -fx-font-size: 11px;"/>
+                    </HBox>
+                    <Separator style="-fx-opacity: 0.4;"/>
+                    <HBox style="-fx-padding: 3 0;">
+                        <Label text="Pixels" style="-fx-text-fill: #94a3b8; -fx-font-size: 11px;" minWidth="80"/>
+                        <Label fx:id="lblOutputPixels" text="—" style="-fx-text-fill: #1e293b; -fx-font-size: 11px;"/>
+                    </HBox>
+                </VBox>
+
+                <VBox spacing="6">
+                    <Button fx:id="btnSave" text="Save As…" maxWidth="Infinity"
+                            onAction="#handleSave" disable="true"
+                            style="-fx-background-color: #dc2626; -fx-text-fill: white; -fx-font-weight: bold;
+                                   -fx-background-radius: 6; -fx-padding: 7; -fx-cursor: hand; -fx-font-size: 12px;"/>
+                    <Button fx:id="btnOpenOutput" text="Open in Viewer" maxWidth="Infinity"
+                            onAction="#handleOpenOutput" disable="true"
+                            style="-fx-background-color: #f8fafc; -fx-text-fill: #475569; -fx-font-weight: bold;
+                                   -fx-background-radius: 6; -fx-padding: 7; -fx-cursor: hand; -fx-font-size: 12px;
+                                   -fx-border-color: #cbd5e1; -fx-border-radius: 6;"/>
+                </VBox>
+            </VBox>
+
+            <!-- ── MONITOR PANEL ── -->
+            <VBox spacing="10" minWidth="250"
+                  style="-fx-background-color: #ffffff; -fx-border-color: #e2e8f0; -fx-border-radius: 8;
+                         -fx-background-radius: 8; -fx-padding: 14;
+                         -fx-effect: dropshadow(gaussian,#0000000a,6,0,0,2);">
+
+                <HBox alignment="CENTER_LEFT" spacing="6">
+                    <Label text="●" style="-fx-text-fill: #ea580c; -fx-font-size: 9px;"/>
+                    <Label text="MONITOR" style="-fx-text-fill: #ea580c; -fx-font-size: 11px; -fx-font-weight: bold;"/>
+                </HBox>
+
+                <!-- static system info — populated in initialize() -->
+                <Label text="SYSTEM" style="-fx-text-fill: #94a3b8; -fx-font-size: 10px; -fx-font-weight: bold;"/>
+                <VBox fx:id="systemInfoBox" spacing="0"
+                      style="-fx-background-color: #f8fafc; -fx-border-color: #e2e8f0; -fx-border-radius: 6;
+                             -fx-background-radius: 6; -fx-padding: 8 10;"/>
+
+                <Separator style="-fx-opacity: 0.5;"/>
+
+                <!-- dynamic run metrics — populated after each process() -->
+                <Label text="LAST RUN" style="-fx-text-fill: #94a3b8; -fx-font-size: 10px; -fx-font-weight: bold;"/>
+
+                <!-- wall time headline card — hidden until first run -->
+                <VBox fx:id="wallTimeCard" spacing="2" visible="false" managed="false"
+                      style="-fx-background-color: #fff7ed; -fx-border-color: #fdba74; -fx-border-radius: 8;
+                             -fx-background-radius: 8; -fx-padding: 10 14; -fx-alignment: CENTER;">
+                    <Label fx:id="lblWallTime" text="—"
+                           style="-fx-text-fill: #c2410c; -fx-font-size: 28px; -fx-font-weight: bold;"/>
+                    <Label text="wall clock time"
+                           style="-fx-text-fill: #ea580c; -fx-font-size: 10px;"/>
+                </VBox>
+
+                <VBox fx:id="metricsBox" spacing="0" VBox.vgrow="ALWAYS"
+                      style="-fx-background-color: #f8fafc; -fx-border-color: #e2e8f0; -fx-border-radius: 6;
+                             -fx-background-radius: 6; -fx-padding: 8 10;"/>
+
+            </VBox>
+
+        </HBox>
+    </center>
+
+</BorderPane>
