@@ -20,8 +20,8 @@ class HistogramEqualizationCorrectnessTest {
 
     static Stream<ImageProcessingService> implementations() {
         return Stream.of(
-                new SequentialImageProcessingService()
-                // add: new ManualThreadImageProcessingService(),
+                new SequentialImageProcessingService(),
+                new ManualThreadImageProcessingService()
                 // add: new ThreadPoolImageProcessingService(),
                 // add: new ForkJoinImageProcessingService(),
                 // add: new CompletableFutureImageProcessingService()

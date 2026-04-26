@@ -13,6 +13,7 @@ import com.sismd.service.ImageMetadataService;
 import com.sismd.service.ImageProcessingService;
 import com.sismd.service.impl.DefaultImageIOService;
 import com.sismd.service.impl.DefaultImageMetadataService;
+import com.sismd.service.impl.ManualThreadImageProcessingService;
 import com.sismd.service.impl.SequentialImageProcessingService;
 import javafx.animation.ScaleTransition;
 import javafx.concurrent.Task;
@@ -21,6 +22,7 @@ import javafx.geometry.Pos;
 import javafx.scene.Cursor;
 import javafx.scene.Node;
 import javafx.scene.control.Button;
+import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.Separator;
 import javafx.scene.image.ImageView;
@@ -42,17 +44,22 @@ import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
 
 public class MainController {
 
     // ── service wiring ────────────────────────────────────────────────────────────
-    private final ImageIOService         ioService         = new DefaultImageIOService();
-    private final ImageMetadataService   metadataService   = new DefaultImageMetadataService(ioService);
-    private final ImageProcessingService processingService = new SequentialImageProcessingService();
-    private final PerformanceMonitor     monitor           = new JmxPerformanceAdapter();
-    private final SystemInfoService      systemInfoService = new DefaultSystemInfoAdapter();
+    private final ImageIOService       ioService         = new DefaultImageIOService();
+    private final ImageMetadataService metadataService   = new DefaultImageMetadataService(ioService);
+    private final PerformanceMonitor   monitor           = new JmxPerformanceAdapter();
+    private final SystemInfoService    systemInfoService = new DefaultSystemInfoAdapter();
+
+    // swapped via the algorithm dropdown
+    private ImageProcessingService processingService;
+
+    private final LinkedHashMap<String, ImageProcessingService> implementations = new LinkedHashMap<>();
 
     // ── preview pane styles ───────────────────────────────────────────────────────
     private static final String PANE_BASE =
@@ -89,6 +96,7 @@ public class MainController {
     @FXML private VBox   wallTimeCard;
     @FXML private Label  lblWallTime;
     @FXML private VBox   metricsBox;
+    @FXML private ComboBox<String> algorithmCombo;
     @FXML private Label  lblStatus;
     @FXML private Button btnChoose;
     @FXML private Button btnProcess;
@@ -109,6 +117,18 @@ public class MainController {
     @FXML
     private void initialize() {
         uploadsBase = Path.of(System.getProperty("user.dir"), "uploads");
+
+        // build the implementation registry — add new strategies here as they land
+        int cores = Runtime.getRuntime().availableProcessors();
+        implementations.put("Sequential",                      new SequentialImageProcessingService());
+        implementations.put("Manual Threads (" + cores + ")", new ManualThreadImageProcessingService());
+
+        algorithmCombo.getItems().addAll(implementations.keySet());
+        algorithmCombo.getSelectionModel().selectFirst();
+        processingService = implementations.get(algorithmCombo.getValue());
+        algorithmCombo.valueProperty().addListener(
+                (obs, old, val) -> processingService = implementations.get(val));
+
         SystemInfoSnapshot info = systemInfoService.read();
         populateInfoBox(systemInfoBox, info.asMap());
         setupInputPreviewPane();
@@ -178,7 +198,7 @@ public class MainController {
             btnProcess.setDisable(false);
             btnSave.setDisable(false);
             btnOpenOutput.setDisable(false);
-            setStatus("Done — " + wallMs + " ms wall time", "#16a34a");
+            setStatus("Done — " + algorithmCombo.getValue() + " — " + wallMs + " ms", "#16a34a");
         });
 
         task.setOnFailed(e -> {

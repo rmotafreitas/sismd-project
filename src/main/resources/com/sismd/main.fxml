@@ -79,6 +79,13 @@
                     <Button fx:id="btnChoose" text="Choose Image…" maxWidth="Infinity" onAction="#handleChooseFile"
                             style="-fx-background-color: #2563eb; -fx-text-fill: white; -fx-font-weight: bold;
                                    -fx-background-radius: 6; -fx-padding: 7; -fx-cursor: hand; -fx-font-size: 12px;"/>
+
+                    <HBox alignment="CENTER_LEFT" spacing="8">
+                        <Label text="Algorithm" style="-fx-text-fill: #64748b; -fx-font-size: 11px;" minWidth="68"/>
+                        <ComboBox fx:id="algorithmCombo" maxWidth="Infinity" HBox.hgrow="ALWAYS"
+                                  style="-fx-font-size: 11px; -fx-background-radius: 6; -fx-border-radius: 6;"/>
+                    </HBox>
+
                     <Button fx:id="btnProcess" text="Apply Histogram Equalization" maxWidth="Infinity"
                             onAction="#handleProcess" disable="true"
                             style="-fx-background-color: #16a34a; -fx-text-fill: white; -fx-font-weight: bold;
