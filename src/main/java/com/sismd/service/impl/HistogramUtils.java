@@ -37,6 +37,13 @@ public final class HistogramUtils {
         return 0;
     }
 
+    /** Element-wise sum of two 256-bucket histograms into a new array. */
+    public static int[] mergeHistograms(int[] a, int[] b) {
+        int[] result = new int[256];
+        for (int i = 0; i < 256; i++) result[i] = a[i] + b[i];
+        return result;
+    }
+
     /**
      * Applies the standard histogram equalization formula to a single CDF value.
      * Result is clamped to [0, 255].

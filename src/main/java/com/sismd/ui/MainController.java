@@ -13,8 +13,11 @@ import com.sismd.service.ImageMetadataService;
 import com.sismd.service.ImageProcessingService;
 import com.sismd.service.impl.DefaultImageIOService;
 import com.sismd.service.impl.DefaultImageMetadataService;
+import com.sismd.service.impl.CompletableFutureImageProcessingService;
+import com.sismd.service.impl.ForkJoinImageProcessingService;
 import com.sismd.service.impl.ManualThreadImageProcessingService;
 import com.sismd.service.impl.SequentialImageProcessingService;
+import com.sismd.service.impl.ThreadPoolImageProcessingService;
 import javafx.animation.ScaleTransition;
 import javafx.concurrent.Task;
 import javafx.fxml.FXML;
@@ -120,8 +123,11 @@ public class MainController {
 
         // build the implementation registry — add new strategies here as they land
         int cores = Runtime.getRuntime().availableProcessors();
-        implementations.put("Sequential",                      new SequentialImageProcessingService());
-        implementations.put("Manual Threads (" + cores + ")", new ManualThreadImageProcessingService());
+        implementations.put("Sequential",                        new SequentialImageProcessingService());
+        implementations.put("Manual Threads (" + cores + ")",   new ManualThreadImageProcessingService());
+        implementations.put("Thread Pool (" + cores + ")",      new ThreadPoolImageProcessingService());
+        implementations.put("Fork / Join",                       new ForkJoinImageProcessingService());
+        implementations.put("CompletableFuture (" + cores + ")", new CompletableFutureImageProcessingService());
 
         algorithmCombo.getItems().addAll(implementations.keySet());
         algorithmCombo.getSelectionModel().selectFirst();

@@ -21,10 +21,10 @@ class HistogramEqualizationCorrectnessTest {
     static Stream<ImageProcessingService> implementations() {
         return Stream.of(
                 new SequentialImageProcessingService(),
-                new ManualThreadImageProcessingService()
-                // add: new ThreadPoolImageProcessingService(),
-                // add: new ForkJoinImageProcessingService(),
-                // add: new CompletableFutureImageProcessingService()
+                new ManualThreadImageProcessingService(),
+                new ThreadPoolImageProcessingService(),
+                new ForkJoinImageProcessingService(),
+                new CompletableFutureImageProcessingService()
         );
     }
 
