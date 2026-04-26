@@ -1,5 +1,6 @@
 package com.sismd.ui;
 
+import com.sismd.model.GenerationRecord;
 import com.sismd.model.ImageData;
 import com.sismd.model.ImageMetadata;
 import com.sismd.monitor.performance.JmxPerformanceAdapter;
@@ -8,6 +9,9 @@ import com.sismd.monitor.performance.PerformanceSnapshot;
 import com.sismd.monitor.system.DefaultSystemInfoAdapter;
 import com.sismd.monitor.system.SystemInfoService;
 import com.sismd.monitor.system.SystemInfoSnapshot;
+import com.sismd.repository.CsvExporter;
+import com.sismd.repository.FileGenerationRepository;
+import com.sismd.repository.GenerationRepository;
 import com.sismd.service.ImageIOService;
 import com.sismd.service.ImageMetadataService;
 import com.sismd.service.ImageProcessingService;
@@ -25,8 +29,10 @@ import javafx.geometry.Pos;
 import javafx.scene.Cursor;
 import javafx.scene.Node;
 import javafx.scene.control.Button;
+import javafx.scene.control.CheckBox;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
+import javafx.scene.control.ScrollPane;
 import javafx.scene.control.Separator;
 import javafx.scene.image.ImageView;
 import javafx.scene.image.WritableImage;
@@ -47,7 +53,11 @@ import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -58,11 +68,25 @@ public class MainController {
     private final ImageMetadataService metadataService   = new DefaultImageMetadataService(ioService);
     private final PerformanceMonitor   monitor           = new JmxPerformanceAdapter();
     private final SystemInfoService    systemInfoService = new DefaultSystemInfoAdapter();
+    private final CsvExporter          csvExporter       = new CsvExporter();
 
     // swapped via the algorithm dropdown
     private ImageProcessingService processingService;
 
     private final LinkedHashMap<String, ImageProcessingService> implementations = new LinkedHashMap<>();
+
+    private GenerationRepository genRepo;
+
+    // ── history row styles ────────────────────────────────────────────────────────
+    private static final String HIST_ROW_BASE =
+            "-fx-background-color: #f8fafc; -fx-border-color: #e2e8f0; -fx-border-radius: 6; " +
+            "-fx-background-radius: 6; -fx-padding: 6 8; -fx-cursor: hand;";
+    private static final String HIST_ROW_HOVER =
+            "-fx-background-color: #f1f5f9; -fx-border-color: #cbd5e1; -fx-border-radius: 6; " +
+            "-fx-background-radius: 6; -fx-padding: 6 8; -fx-cursor: hand;";
+    private static final String HIST_ROW_ACTIVE =
+            "-fx-background-color: #faf5ff; -fx-border-color: #7c3aed; -fx-border-radius: 6; " +
+            "-fx-background-radius: 6; -fx-padding: 6 8; -fx-cursor: hand;";
 
     // ── preview pane styles ───────────────────────────────────────────────────────
     private static final String PANE_BASE =
@@ -99,6 +123,7 @@ public class MainController {
     @FXML private VBox   wallTimeCard;
     @FXML private Label  lblWallTime;
     @FXML private VBox   metricsBox;
+    @FXML private VBox   historyBox;
     @FXML private ComboBox<String> algorithmCombo;
     @FXML private Label  lblStatus;
     @FXML private Button btnChoose;
@@ -107,6 +132,9 @@ public class MainController {
     @FXML private Button btnOpenInput;
     @FXML private Button btnOpenOutput;
     @FXML private Button btnReset;
+    @FXML private Button btnExportCsv;
+    @FXML private Button btnDeleteAll;
+    @FXML private Button btnDeleteSelected;
 
     // ── state ─────────────────────────────────────────────────────────────────────
     private File   selectedFile;
@@ -114,12 +142,14 @@ public class MainController {
     private String sessionUuid;
     private Path   uploadsBase;
     private ImageData processedOutput;
+    private String loadedHistoryUuid;
 
     // ── lifecycle ─────────────────────────────────────────────────────────────────
 
     @FXML
     private void initialize() {
         uploadsBase = Path.of(System.getProperty("user.dir"), "uploads");
+        genRepo = new FileGenerationRepository(uploadsBase);
 
         // build the implementation registry — add new strategies here as they land
         int cores = Runtime.getRuntime().availableProcessors();
@@ -139,7 +169,10 @@ public class MainController {
         populateInfoBox(systemInfoBox, info.asMap());
         setupInputPreviewPane();
         setupOutputPreviewPane();
-        setupButtonHover(btnChoose, btnProcess, btnSave, btnOpenInput, btnOpenOutput, btnReset);
+        setupButtonHover(btnChoose, btnProcess, btnSave, btnOpenInput, btnOpenOutput,
+                         btnReset, btnExportCsv, btnDeleteAll, btnDeleteSelected);
+
+        loadHistoryFromRepo();
     }
 
     // ── handlers ──────────────────────────────────────────────────────────────────
@@ -172,6 +205,8 @@ public class MainController {
         final File source    = selectedFile;
         final String uuid    = sessionUuid;
 
+        final String algo = algorithmCombo.getValue();
+
         Task<ProcessingResult> task = new Task<>() {
             @Override
             protected ProcessingResult call() {
@@ -186,7 +221,7 @@ public class MainController {
 
                 // persist output — outside the monitored window
                 File out = saveToUploadsOutput(output, uuid);
-                return ProcessingResult.of(output, stats, out);
+                return ProcessingResult.of(output, stats, inputCopy, out);
             }
         };
 
@@ -204,7 +239,21 @@ public class MainController {
             btnProcess.setDisable(false);
             btnSave.setDisable(false);
             btnOpenOutput.setDisable(false);
-            setStatus("Done — " + algorithmCombo.getValue() + " — " + wallMs + " ms", "#16a34a");
+            setStatus("Done — " + algo + " — " + wallMs + " ms", "#16a34a");
+
+            GenerationRecord rec = GenerationRecord.builder()
+                    .uuid(uuid)
+                    .algorithmName(algo)
+                    .inputFilename(r.getInputFile().getName())
+                    .outputFilename(r.getOutputFile().getName())
+                    .wallTimeMs(wallMs)
+                    .metrics(r.getStats().getMetrics())
+                    .createdAt(Instant.now())
+                    .imageWidth(r.getOutput().getWidth())
+                    .imageHeight(r.getOutput().getHeight())
+                    .build();
+            genRepo.save(rec);
+            addHistoryCard(rec);
         });
 
         task.setOnFailed(e -> {
@@ -217,8 +266,9 @@ public class MainController {
 
     @FXML
     private void handleReset() {
-        selectedFile = null;
-        sessionUuid  = null;
+        selectedFile      = null;
+        sessionUuid       = null;
+        loadedHistoryUuid = null;
         inputImageView.setImage(null);
         inputPlaceholder.setVisible(true);
         lblInputFile.setText("—");
@@ -228,6 +278,7 @@ public class MainController {
         lblInputPixels.setText("—");
         btnProcess.setDisable(true);
         btnOpenInput.setDisable(true);
+        refreshHistoryActiveStyle();
         resetOutput();
     }
 
@@ -435,6 +486,247 @@ public class MainController {
         return dot >= 0 ? filename.substring(dot).toLowerCase() : ".jpg";
     }
 
+    @FXML
+    private void handleExportCsv() {
+        List<GenerationRecord> all = genRepo.findAll();
+        if (all.isEmpty()) {
+            setStatus("No history to export.", "#64748b");
+            return;
+        }
+        File dest = saveChooser("Export History as CSV",
+                new FileChooser.ExtensionFilter("CSV File", "*.csv"));
+        if (dest == null) return;
+        try {
+            csvExporter.export(all, dest);
+            setStatus("Exported " + all.size() + " records → " + dest.getName(), "#2563eb");
+        } catch (IOException ex) {
+            setStatus("Export failed: " + ex.getMessage(), "#dc2626");
+        }
+    }
+
+    @FXML
+    private void handleDeleteAll() {
+        genRepo.deleteAll();
+        historyBox.getChildren().clear();
+        if (loadedHistoryUuid != null) handleReset();
+        setStatus("History cleared.", "#64748b");
+    }
+
+    @FXML
+    private void handleDeleteSelected() {
+        var toRemove = historyBox.getChildren().stream()
+                .filter(node -> {
+                    if (!(node instanceof HBox row)) return false;
+                    return row.getChildren().stream()
+                            .filter(c -> c instanceof CheckBox)
+                            .map(c -> (CheckBox) c)
+                            .findFirst()
+                            .map(CheckBox::isSelected)
+                            .orElse(false);
+                })
+                .toList();
+
+        boolean deletedLoaded = false;
+        for (var node : toRemove) {
+            String uuid = (String) node.getUserData();
+            if (uuid != null) {
+                genRepo.delete(uuid);
+                if (uuid.equals(loadedHistoryUuid)) deletedLoaded = true;
+            }
+        }
+        historyBox.getChildren().removeAll(toRemove);
+        if (deletedLoaded) handleReset();
+
+        if (!toRemove.isEmpty())
+            setStatus("Deleted " + toRemove.size() + " history record(s).", "#64748b");
+    }
+
+    private void loadHistoryFromRepo() {
+        // oldest→newest from repo; addFirst reverses them so newest appears at top
+        List<GenerationRecord> records = genRepo.findAll();
+        for (GenerationRecord r : records) {
+            addHistoryCard(r);
+        }
+    }
+
+    private void addHistoryCard(GenerationRecord r) {
+        HBox row = new HBox(7);
+        row.setAlignment(Pos.CENTER_LEFT);
+        row.setUserData(r.getUuid());
+        row.setStyle(HIST_ROW_BASE);
+
+        // hover — only when not the active item
+        row.setOnMouseEntered(e -> {
+            if (!r.getUuid().equals(loadedHistoryUuid)) row.setStyle(HIST_ROW_HOVER);
+        });
+        row.setOnMouseExited(e -> {
+            if (!r.getUuid().equals(loadedHistoryUuid)) row.setStyle(HIST_ROW_BASE);
+        });
+
+        // row click → load into UI (ignore clicks on checkbox or delete button)
+        row.setOnMouseClicked(e -> {
+            if (e.getTarget() instanceof CheckBox) return;
+            if (e.getTarget() instanceof Button)  return;
+            loadHistoryItem(r);
+        });
+
+        // multi-select checkbox — consume click so it doesn't bubble to the row handler
+        CheckBox cb = new CheckBox();
+        cb.setStyle("-fx-cursor: hand;");
+        cb.setOnMouseClicked(javafx.event.Event::consume);
+
+        // thumbnail
+        File outFile = uploadsBase.resolve("output").resolve(r.getOutputFilename()).toFile();
+        javafx.scene.image.ImageView thumb = new javafx.scene.image.ImageView();
+        thumb.setFitWidth(68);
+        thumb.setFitHeight(52);
+        thumb.setPreserveRatio(true);
+        thumb.setCursor(Cursor.HAND);
+        if (outFile.exists()) {
+            try {
+                thumb.setImage(new javafx.scene.image.Image(
+                        outFile.toURI().toString(), 68, 52, true, true));
+            } catch (Exception ignored) {}
+        }
+        // thumbnail click → open in OS viewer
+        thumb.setOnMouseClicked(e -> {
+            e.consume();
+            openInViewer(outFile);
+        });
+
+        // info block
+        VBox info = new VBox(2);
+        HBox.setHgrow(info, Priority.ALWAYS);
+
+        // line 1: algorithm + wall time
+        HBox line1 = new HBox(6);
+        line1.setAlignment(Pos.CENTER_LEFT);
+
+        Label algoLbl = new Label(r.getAlgorithmName());
+        algoLbl.setStyle("-fx-text-fill: #2563eb; -fx-font-size: 10px; -fx-font-weight: bold;");
+        algoLbl.setWrapText(false);
+
+        Label timeLbl = new Label(r.getWallTimeMs() + " ms");
+        timeLbl.setStyle("-fx-text-fill: #c2410c; -fx-font-size: 10px; -fx-font-weight: bold;");
+        HBox.setHgrow(timeLbl, Priority.ALWAYS);
+
+        line1.getChildren().addAll(algoLbl, timeLbl);
+
+        // line 2: dimensions + date
+        HBox line2 = new HBox(6);
+        line2.setAlignment(Pos.CENTER_LEFT);
+
+        Label dimLbl = new Label(r.getImageWidth() + "×" + r.getImageHeight());
+        dimLbl.setStyle("-fx-text-fill: #64748b; -fx-font-size: 9px;");
+        HBox.setHgrow(dimLbl, Priority.ALWAYS);
+
+        Label dateLbl = new Label(formatTimestamp(r.getCreatedAt()));
+        dateLbl.setStyle("-fx-text-fill: #94a3b8; -fx-font-size: 9px;");
+
+        line2.getChildren().addAll(dimLbl, dateLbl);
+
+        // line 3: output filename (truncated)
+        Label fileLbl = new Label(r.getOutputFilename());
+        fileLbl.setStyle("-fx-text-fill: #94a3b8; -fx-font-size: 9px;");
+        fileLbl.setMaxWidth(Double.MAX_VALUE);
+
+        info.getChildren().addAll(line1, line2, fileLbl);
+
+        // per-row delete button
+        Button delBtn = new Button("✕");
+        delBtn.setStyle("-fx-background-color: #fef2f2; -fx-text-fill: #dc2626; -fx-font-size: 10px; " +
+                        "-fx-font-weight: bold; -fx-background-radius: 4; -fx-border-color: #fecaca; " +
+                        "-fx-border-radius: 4; -fx-padding: 2 6; -fx-cursor: hand;");
+        delBtn.setOnAction(e -> {
+            boolean wasLoaded = r.getUuid().equals(loadedHistoryUuid);
+            genRepo.delete(r.getUuid());
+            historyBox.getChildren().remove(row);
+            if (wasLoaded) handleReset();
+        });
+        delBtn.setOnMouseEntered(e -> animateScale(delBtn, 1.0, 1.08));
+        delBtn.setOnMouseExited(e ->  animateScale(delBtn, 1.08, 1.0));
+        // consume mouse click so it doesn't bubble to the row click handler
+        delBtn.setOnMouseClicked(javafx.event.Event::consume);
+
+        row.getChildren().addAll(cb, thumb, info, delBtn);
+        historyBox.getChildren().addFirst(row);
+    }
+
+    private void loadHistoryItem(GenerationRecord r) {
+        File inputFile = uploadsBase.resolve("input").resolve(r.getInputFilename()).toFile();
+        File outFile   = uploadsBase.resolve("output").resolve(r.getOutputFilename()).toFile();
+
+        if (!inputFile.exists() && !outFile.exists()) {
+            setStatus("Files for this history item no longer exist on disk.", "#dc2626");
+            return;
+        }
+
+        loadedHistoryUuid = r.getUuid();
+        refreshHistoryActiveStyle();
+
+        // ── input side ────────────────────────────────────────────
+        if (inputFile.exists()) {
+            selectedFile = inputFile;
+            populateInputLabels(metadataService.read(inputFile));
+            inputImageView.setImage(new javafx.scene.image.Image(inputFile.toURI().toString()));
+            inputPlaceholder.setVisible(false);
+            btnProcess.setDisable(false);
+            btnOpenInput.setDisable(false);
+        } else {
+            lblInputFile.setText(r.getInputFilename());
+            lblInputFormat.setText("—");
+            lblInputSize.setText("(file removed)");
+            lblInputDimensions.setText(r.getImageWidth() + " × " + r.getImageHeight() + " px");
+            lblInputPixels.setText(String.format("%,d", (long) r.getImageWidth() * r.getImageHeight()));
+        }
+
+        // ── output side ───────────────────────────────────────────
+        if (outFile.exists()) {
+            try {
+                ImageData loadedOutput = ioService.load(outFile);
+                processedOutput = loadedOutput;
+                outputFile = outFile;
+                populateOutputLabels(loadedOutput, outFile);
+                outputPreviewPane.setCursor(Cursor.HAND);
+                btnSave.setDisable(false);
+                btnOpenOutput.setDisable(false);
+            } catch (Exception ex) {
+                setStatus("Could not reload output image: " + ex.getMessage(), "#dc2626");
+            }
+        }
+
+        // ── monitor side ──────────────────────────────────────────
+        lblWallTime.setText(r.getWallTimeMs() + " ms");
+        wallTimeCard.setVisible(true);
+        wallTimeCard.setManaged(true);
+        if (r.getMetrics() != null && !r.getMetrics().isEmpty()) {
+            populateInfoBox(metricsBox, r.getMetrics());
+        }
+
+        // restore algorithm selection
+        if (algorithmCombo.getItems().contains(r.getAlgorithmName())) {
+            algorithmCombo.setValue(r.getAlgorithmName());
+        }
+
+        setStatus("Loaded: " + r.getAlgorithmName() + " — " + r.getWallTimeMs() + " ms", "#7c3aed");
+    }
+
+    private void refreshHistoryActiveStyle() {
+        for (javafx.scene.Node n : historyBox.getChildren()) {
+            if (!(n instanceof HBox row)) continue;
+            String uuid = (String) row.getUserData();
+            boolean active = loadedHistoryUuid != null && loadedHistoryUuid.equals(uuid);
+            row.setStyle(active ? HIST_ROW_ACTIVE : HIST_ROW_BASE);
+        }
+    }
+
+    private static final DateTimeFormatter HIST_FMT =
+            DateTimeFormatter.ofPattern("MM/dd HH:mm").withZone(ZoneId.systemDefault());
+
+    private String formatTimestamp(Instant instant) {
+        return HIST_FMT.format(instant);
+    }
+
     // ── inner class ───────────────────────────────────────────────────────────────
 
     @Getter
@@ -442,6 +734,7 @@ public class MainController {
     private static class ProcessingResult {
         private final ImageData           output;
         private final PerformanceSnapshot stats;
+        private final File                inputFile;
         private final File                outputFile;
     }
 }

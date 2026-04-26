@@ -5,7 +5,7 @@
 
 <BorderPane xmlns:fx="http://javafx.com/fxml" fx:controller="com.sismd.ui.MainController"
             style="-fx-background-color: #f1f5f9;"
-            prefWidth="960" prefHeight="700">
+            prefWidth="1280" prefHeight="720">
 
     <!-- TOP BAR -->
     <top>
@@ -23,9 +23,9 @@
         </HBox>
     </top>
 
-    <!-- MAIN CONTENT -->
+    <!-- MAIN CONTENT: 4 columns -->
     <center>
-        <HBox spacing="12" style="-fx-padding: 14 14 22 14;" alignment="TOP_LEFT">
+        <HBox spacing="10" style="-fx-padding: 12 12 12 12;" alignment="TOP_LEFT">
 
             <!-- ── INPUT PANEL ── -->
             <VBox spacing="10" HBox.hgrow="ALWAYS"
@@ -41,7 +41,7 @@
                 <StackPane fx:id="inputPreviewPane"
                            style="-fx-background-color: #f8fafc; -fx-border-color: #e2e8f0; -fx-border-radius: 6;
                                   -fx-background-radius: 6; -fx-min-height: 190; -fx-max-height: 190; -fx-cursor: hand;">
-                    <ImageView fx:id="inputImageView" fitWidth="280" fitHeight="190" preserveRatio="true"/>
+                    <ImageView fx:id="inputImageView" fitWidth="260" fitHeight="190" preserveRatio="true"/>
                     <Label fx:id="inputPlaceholder" text="Click to choose an image…"
                            style="-fx-text-fill: #cbd5e1; -fx-font-size: 12px;"/>
                 </StackPane>
@@ -79,13 +79,11 @@
                     <Button fx:id="btnChoose" text="Choose Image…" maxWidth="Infinity" onAction="#handleChooseFile"
                             style="-fx-background-color: #2563eb; -fx-text-fill: white; -fx-font-weight: bold;
                                    -fx-background-radius: 6; -fx-padding: 7; -fx-cursor: hand; -fx-font-size: 12px;"/>
-
                     <HBox alignment="CENTER_LEFT" spacing="8">
                         <Label text="Algorithm" style="-fx-text-fill: #64748b; -fx-font-size: 11px;" minWidth="68"/>
                         <ComboBox fx:id="algorithmCombo" maxWidth="Infinity" HBox.hgrow="ALWAYS"
                                   style="-fx-font-size: 11px; -fx-background-radius: 6; -fx-border-radius: 6;"/>
                     </HBox>
-
                     <Button fx:id="btnProcess" text="Apply Histogram Equalization" maxWidth="Infinity"
                             onAction="#handleProcess" disable="true"
                             style="-fx-background-color: #16a34a; -fx-text-fill: white; -fx-font-weight: bold;
@@ -112,7 +110,7 @@
                 <StackPane fx:id="outputPreviewPane"
                            style="-fx-background-color: #f8fafc; -fx-border-color: #e2e8f0; -fx-border-radius: 6;
                                   -fx-background-radius: 6; -fx-min-height: 190; -fx-max-height: 190;">
-                    <ImageView fx:id="outputImageView" fitWidth="280" fitHeight="190" preserveRatio="true"/>
+                    <ImageView fx:id="outputImageView" fitWidth="260" fitHeight="190" preserveRatio="true"/>
                     <Label fx:id="outputPlaceholder" text="Output will appear here"
                            style="-fx-text-fill: #cbd5e1; -fx-font-size: 12px;"/>
                 </StackPane>
@@ -160,7 +158,7 @@
             </VBox>
 
             <!-- ── MONITOR PANEL ── -->
-            <VBox spacing="10" minWidth="250"
+            <VBox spacing="10" minWidth="230" maxWidth="260"
                   style="-fx-background-color: #ffffff; -fx-border-color: #e2e8f0; -fx-border-radius: 8;
                          -fx-background-radius: 8; -fx-padding: 14;
                          -fx-effect: dropshadow(gaussian,#0000000a,6,0,0,2);">
@@ -170,7 +168,6 @@
                     <Label text="MONITOR" style="-fx-text-fill: #ea580c; -fx-font-size: 11px; -fx-font-weight: bold;"/>
                 </HBox>
 
-                <!-- static system info — populated in initialize() -->
                 <Label text="SYSTEM" style="-fx-text-fill: #94a3b8; -fx-font-size: 10px; -fx-font-weight: bold;"/>
                 <VBox fx:id="systemInfoBox" spacing="0"
                       style="-fx-background-color: #f8fafc; -fx-border-color: #e2e8f0; -fx-border-radius: 6;
@@ -178,10 +175,8 @@
 
                 <Separator style="-fx-opacity: 0.5;"/>
 
-                <!-- dynamic run metrics — populated after each process() -->
                 <Label text="LAST RUN" style="-fx-text-fill: #94a3b8; -fx-font-size: 10px; -fx-font-weight: bold;"/>
 
-                <!-- wall time headline card — hidden until first run -->
                 <VBox fx:id="wallTimeCard" spacing="2" visible="false" managed="false"
                       style="-fx-background-color: #fff7ed; -fx-border-color: #fdba74; -fx-border-radius: 8;
                              -fx-background-radius: 8; -fx-padding: 10 14; -fx-alignment: CENTER;">
@@ -194,6 +189,45 @@
                 <VBox fx:id="metricsBox" spacing="0" VBox.vgrow="ALWAYS"
                       style="-fx-background-color: #f8fafc; -fx-border-color: #e2e8f0; -fx-border-radius: 6;
                              -fx-background-radius: 6; -fx-padding: 8 10;"/>
+            </VBox>
+
+            <!-- ── HISTORY PANEL (4th column) ── -->
+            <VBox spacing="8" minWidth="300" maxWidth="340"
+                  style="-fx-background-color: #ffffff; -fx-border-color: #e2e8f0; -fx-border-radius: 8;
+                         -fx-background-radius: 8; -fx-padding: 14;
+                         -fx-effect: dropshadow(gaussian,#0000000a,6,0,0,2);">
+
+                <!-- header row -->
+                <HBox alignment="CENTER_LEFT" spacing="6">
+                    <Label text="●" style="-fx-text-fill: #7c3aed; -fx-font-size: 9px;"/>
+                    <Label text="HISTORY" style="-fx-text-fill: #7c3aed; -fx-font-size: 11px; -fx-font-weight: bold;"/>
+                </HBox>
+
+                <!-- action buttons row -->
+                <HBox spacing="4" alignment="CENTER_LEFT">
+                    <Button fx:id="btnDeleteSelected" text="Del. Selected" onAction="#handleDeleteSelected"
+                            maxWidth="Infinity" HBox.hgrow="ALWAYS"
+                            style="-fx-background-color: #faf5ff; -fx-text-fill: #7c3aed; -fx-font-size: 10px;
+                                   -fx-font-weight: bold; -fx-background-radius: 5; -fx-border-radius: 5;
+                                   -fx-border-color: #ddd6fe; -fx-padding: 4 6; -fx-cursor: hand;"/>
+                    <Button fx:id="btnDeleteAll" text="Clear All" onAction="#handleDeleteAll"
+                            maxWidth="Infinity" HBox.hgrow="ALWAYS"
+                            style="-fx-background-color: #fef2f2; -fx-text-fill: #dc2626; -fx-font-size: 10px;
+                                   -fx-font-weight: bold; -fx-background-radius: 5; -fx-border-radius: 5;
+                                   -fx-border-color: #fecaca; -fx-padding: 4 6; -fx-cursor: hand;"/>
+                    <Button fx:id="btnExportCsv" text="CSV" onAction="#handleExportCsv"
+                            maxWidth="Infinity" HBox.hgrow="ALWAYS"
+                            style="-fx-background-color: #f0fdf4; -fx-text-fill: #16a34a; -fx-font-size: 10px;
+                                   -fx-font-weight: bold; -fx-background-radius: 5; -fx-border-radius: 5;
+                                   -fx-border-color: #bbf7d0; -fx-padding: 4 6; -fx-cursor: hand;"/>
+                </HBox>
+
+                <!-- scrollable history list -->
+                <ScrollPane fitToWidth="true" VBox.vgrow="ALWAYS" hbarPolicy="NEVER"
+                            style="-fx-background: transparent; -fx-background-color: transparent;
+                                   -fx-border-color: transparent; -fx-padding: 0;">
+                    <VBox fx:id="historyBox" spacing="5" style="-fx-padding: 0 2;"/>
+                </ScrollPane>
 
             </VBox>
 
