@@ -35,3 +35,6 @@ replay_pid*.log
 
 # Compiled class files
 *.class
+
+# MD
+SPRINT_PLAN.md
