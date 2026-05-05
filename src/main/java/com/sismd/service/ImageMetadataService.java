@@ -7,6 +7,7 @@ import java.io.File;
 /**
  * Extracts display metadata from an image file without retaining pixel data.
  */
+@FunctionalInterface
 public interface ImageMetadataService {
     ImageMetadata read(File file);
 }

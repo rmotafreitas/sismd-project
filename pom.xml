@@ -37,6 +37,13 @@
             <version>${javafx.version}</version>
         </dependency>
 
+        <!-- XChart — pure-Java chart generation (PNG) -->
+        <dependency>
+            <groupId>org.knowm.xchart</groupId>
+            <artifactId>xchart</artifactId>
+            <version>3.8.8</version>
+        </dependency>
+
         <!-- Lombok -->
         <dependency>
             <groupId>org.projectlombok</groupId>

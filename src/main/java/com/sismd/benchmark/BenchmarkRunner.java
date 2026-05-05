@@ -1,5 +1,7 @@
 package com.sismd.benchmark;
 
+import com.sismd.model.BenchmarkResult;
+import com.sismd.model.BenchmarkSummary;
 import com.sismd.model.ImageData;
 import com.sismd.service.ImageProcessingService;
 import com.sismd.service.impl.CompletableFutureImageProcessingService;
@@ -8,7 +10,6 @@ import com.sismd.service.impl.ManualThreadImageProcessingService;
 import com.sismd.service.impl.SequentialImageProcessingService;
 import com.sismd.service.impl.ThreadPoolImageProcessingService;
 
-import java.awt.Color;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -22,96 +23,102 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.LinkedHashMap;
+import java.util.Comparator;
 import java.util.List;
-import java.util.Map;
-import java.util.Random;
+import java.util.stream.Collectors;
+import java.util.stream.LongStream;
 
 /**
- * Issue #8 — Benchmarking harness for all histogram-equalization implementations.
+ * Benchmarking harness for all histogram-equalization implementations.
  *
- * Run with:  mvn exec:java -Dexec.mainClass="com.sismd.benchmark.BenchmarkRunner"
- * or:        make benchmark
+ * Uses the real photograph {@code input2.jpg} downscaled to four sizes
+ * (Small 640×360, Medium 1920×1080, Large 4096×2304, Original 8192×4608).
  *
- * Outputs three CSVs to results/:
- *   results_time.csv    — wall-clock timings (avg, min, max, stddev)
- *   results_memory.csv  — heap usage before / after each set of runs
- *   results_gc.csv      — GC collections + pause time deltas, system load
+ * Run with: {@code make benchmark}
+ *
+ * Output (all auto-generated in {@code results/}):
+ * {@code benchmark.csv} — single CSV with all metrics
+ * {@code walltime.png} — wall-time comparison plot
+ * {@code speedup.png} — speedup vs sequential plot
+ * {@code gc_analysis.png} — GC pause / heap analysis plot
  */
 public class BenchmarkRunner {
 
-    private static final int WARMUP    = 3;
-    private static final int MEASURED  = 10;
+    private static final int WARMUP = 3;
+    private static final int MEASURED = 10;
 
-    // ── entry point ───────────────────────────────────────────────────────────────
+    private static final Path OUTPUT_DIR = Path.of("results");
+
+    // ── entry point
+    // ───────────────────────────────────────────────────────────────
 
     public static void main(String[] args) throws Exception {
-        System.out.println("╔══════════════════════════════════════════════════════╗");
-        System.out.println("║          SISMD Benchmark Runner — Issue #8           ║");
-        System.out.println("╚══════════════════════════════════════════════════════╝");
-        System.out.printf("  Started : %s%n", LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
-        System.out.printf("  JVM     : %s%n", System.getProperty("java.version"));
-        System.out.printf("  Cores   : %d%n%n", Runtime.getRuntime().availableProcessors());
+        // ── Arrange ──────────────────────────────────────────────────────────
+        printHeader();
+        var images = BenchmarkImageLoader.loadAllSizes();
+        var specs = buildSpecs();
+        var gcName = ManagementFactory.getGarbageCollectorMXBeans().stream()
+                .map(GarbageCollectorMXBean::getName)
+                .collect(Collectors.joining(" + "));
 
-        Map<String, int[]> imageSizes = new LinkedHashMap<>();
-        imageSizes.put("Small(640x480)",    new int[]{640,  480});
-        imageSizes.put("Medium(1920x1080)", new int[]{1920, 1080});
-        imageSizes.put("Large(4096x2160)",  new int[]{4096, 2160});
+        // ── Act ──────────────────────────────────────────────────────────────
+        List<BenchmarkResult> results = new ArrayList<>();
 
-        List<BenchmarkResult> allResults = new ArrayList<>();
+        for (var imgEntry : images.entrySet()) {
+            var sizeLabel = imgEntry.getKey();
+            var image = imgEntry.getValue();
 
-        for (Map.Entry<String, int[]> sizeEntry : imageSizes.entrySet()) {
-            String label = sizeEntry.getKey();
-            int    w     = sizeEntry.getValue()[0];
-            int    h     = sizeEntry.getValue()[1];
+            System.out.printf("▶ %s  (%d×%d, %,d px)%n",
+                    sizeLabel, image.getWidth(), image.getHeight(), image.getPixelCount());
 
-            System.out.printf("▶ Generating %s image (%dx%d, %,d pixels)…%n", label, w, h, (long) w * h);
-            ImageData image = generateImage(w, h, 42L);
-
-            for (ImplSpec spec : buildSpecs()) {
-                System.out.printf("  %-50s ", spec.name() + "…");
+            double seqAvgMs = -1;
+            for (var spec : specs) {
+                System.out.printf("  %-45s ", spec.name());
                 System.out.flush();
-                BenchmarkResult result = runBenchmark(spec.service(), image, spec.name(), label, spec.threadCount());
-                allResults.add(result);
-                System.out.printf("avg=%7.2f ms  min=%7.2f  max=%7.2f  σ=%.2f%n",
-                        result.avgWallMs(), result.minWallMs(), result.maxWallMs(), result.stdDevMs());
+
+                var r = runBenchmark(spec.service(), image, spec.name(), sizeLabel,
+                        spec.threadCount(), gcName);
+                results.add(r);
+
+                if (spec.name().equals("Sequential"))
+                    seqAvgMs = r.getAvgMs();
+
+                System.out.println(r.toConsoleLine(seqAvgMs > 0 ? seqAvgMs : r.getAvgMs()));
             }
             System.out.println();
         }
 
-        Path outDir = Path.of("results");
-        Files.createDirectories(outDir);
-        exportTimeCsv(allResults,   outDir.resolve("results_time.csv").toString());
-        exportMemoryCsv(allResults, outDir.resolve("results_memory.csv").toString());
-        exportGcCsv(allResults,     outDir.resolve("results_gc.csv").toString());
-
-        System.out.println("╔══════════════════════════════════════════════════════╗");
-        System.out.println("║  Done — results written to results/                  ║");
-        System.out.println("║    results_time.csv    — execution times             ║");
-        System.out.println("║    results_memory.csv  — heap usage                  ║");
-        System.out.println("║    results_gc.csv      — GC & CPU metrics            ║");
-        System.out.println("╚══════════════════════════════════════════════════════╝");
+        // ── Assert (write + plot) ───────────────────────────────────────────
+        Files.createDirectories(OUTPUT_DIR);
+        exportCsv(results, OUTPUT_DIR.resolve("benchmark.csv"));
+        exportSummary(results, OUTPUT_DIR.resolve("summary.txt"));
+        BenchmarkCharts.generateAll(results, OUTPUT_DIR);
+        printFooter();
     }
 
-    // ── public API (also used by tests) ───────────────────────────────────────────
+    // ── benchmark core (AAA)
+    // ──────────────────────────────────────────────────────
 
     public static BenchmarkResult runBenchmark(ImageProcessingService service,
-                                               ImageData image,
-                                               String name,
-                                               String sizeLabel,
-                                               int threadCount) {
-        // warm-up — JIT compilation, cache warm
-        for (int i = 0; i < WARMUP; i++) service.process(image);
+            ImageData image,
+            String name,
+            String sizeLabel,
+            int threadCount,
+            String gcCollector) {
+        // ── Arrange ──────────────────────────────────────────────────────────
+        for (int i = 0; i < WARMUP; i++)
+            service.process(image);
         System.gc();
 
-        MemoryMXBean       mem = ManagementFactory.getMemoryMXBean();
-        OperatingSystemMXBean os  = ManagementFactory.getOperatingSystemMXBean();
+        MemoryMXBean mem = ManagementFactory.getMemoryMXBean();
+        OperatingSystemMXBean os = ManagementFactory.getOperatingSystemMXBean();
 
         long heapBefore = mem.getHeapMemoryUsage().getUsed();
         GCSnapshot gcBefore = collectGCSnapshot();
+        long[] times = new long[MEASURED];
         double loadSum = 0;
 
-        long[] times = new long[MEASURED];
+        // ── Act ──────────────────────────────────────────────────────────────
         for (int i = 0; i < MEASURED; i++) {
             long t0 = System.nanoTime();
             service.process(image);
@@ -119,46 +126,57 @@ public class BenchmarkRunner {
             loadSum += Math.max(0, os.getSystemLoadAverage());
         }
 
+        // ── Assert (compute) ─────────────────────────────────────────────────
         long heapAfter = mem.getHeapMemoryUsage().getUsed();
         GCSnapshot gcAfter = collectGCSnapshot();
 
-        Arrays.sort(times);
-        long sum = 0;
-        for (long t : times) sum += t;
-        double avgMs = sum / 1_000_000.0 / MEASURED;
-        double minMs = times[0] / 1_000_000.0;
-        double maxMs = times[MEASURED - 1] / 1_000_000.0;
+        var stats = LongStream.of(times).summaryStatistics();
+        double avgMs = stats.getAverage() / 1_000_000.0;
+        double minMs = stats.getMin() / 1_000_000.0;
+        double maxMs = stats.getMax() / 1_000_000.0;
+        double stdDev = Math.sqrt(
+                LongStream.of(times)
+                        .mapToDouble(t -> {
+                            double d = t / 1_000_000.0 - avgMs;
+                            return d * d;
+                        })
+                        .average().orElse(0));
 
-        double sumSq = 0;
-        for (long t : times) { double d = t / 1_000_000.0 - avgMs; sumSq += d * d; }
-        double stdDev = Math.sqrt(sumSq / MEASURED);
-
-        return new BenchmarkResult(
-                name, sizeLabel, threadCount,
-                avgMs, minMs, maxMs, stdDev,
-                heapBefore, heapAfter,
-                gcAfter.count() - gcBefore.count(),
-                gcAfter.timeMs() - gcBefore.timeMs(),
-                loadSum / MEASURED
-        );
+        return BenchmarkResult.builder()
+                .implName(name).sizeLabel(sizeLabel).threadCount(threadCount)
+                .width(image.getWidth()).height(image.getHeight())
+                .avgMs(avgMs).minMs(minMs).maxMs(maxMs).stdDevMs(stdDev)
+                .heapBeforeMb(heapBefore / 1_048_576.0)
+                .heapAfterMb(heapAfter / 1_048_576.0)
+                .gcCycles(gcAfter.count() - gcBefore.count())
+                .gcPauseMs(gcAfter.timeMs() - gcBefore.timeMs())
+                .sysLoad(loadSum / MEASURED)
+                .gcCollector(gcCollector)
+                .build();
     }
+
+    // ── GC snapshot
+    // ───────────────────────────────────────────────────────────────
 
     public static GCSnapshot collectGCSnapshot() {
         long count = 0, timeMs = 0;
-        for (GarbageCollectorMXBean gc : ManagementFactory.getGarbageCollectorMXBeans()) {
+        for (var gc : ManagementFactory.getGarbageCollectorMXBeans()) {
             long c = gc.getCollectionCount();
             long t = gc.getCollectionTime();
-            if (c >= 0) count  += c;
-            if (t >= 0) timeMs += t;
+            if (c >= 0)
+                count += c;
+            if (t >= 0)
+                timeMs += t;
         }
         return new GCSnapshot(count, timeMs);
     }
 
-    // ── spec builder ──────────────────────────────────────────────────────────────
+    // ── spec builder
+    // ──────────────────────────────────────────────────────────────
 
     private static List<ImplSpec> buildSpecs() {
         int cores = Runtime.getRuntime().availableProcessors();
-        int[] threadCounts = deduplicate(new int[]{1, 2, 4, 8, 16, cores});
+        int[] threadCounts = deduplicate(new int[] { 1, 2, 4, 8, cores, 16 });
 
         List<ImplSpec> specs = new ArrayList<>();
         specs.add(new ImplSpec("Sequential", new SequentialImageProcessingService(), 1));
@@ -172,12 +190,10 @@ public class BenchmarkRunner {
                     new CompletableFutureImageProcessingService(t), t));
         }
 
-        // ForkJoin uses the common pool (parallelism = cores-1); vary threshold for granularity
-        for (int threshold : new int[]{10, 50, 200}) {
+        for (int threshold : new int[] { 10, 50, 200 }) {
             specs.add(new ImplSpec("ForkJoin(threshold=" + threshold + ")",
                     new ForkJoinImageProcessingService(threshold), cores));
         }
-
         return specs;
     }
 
@@ -185,68 +201,78 @@ public class BenchmarkRunner {
         return Arrays.stream(src).distinct().sorted().toArray();
     }
 
-    // ── image generator ───────────────────────────────────────────────────────────
+    // ── CSV export (pure data — no comments, Excel/viewer-safe)
+    // ─────────────────
 
-    public static ImageData generateImage(int width, int height, long seed) {
-        Random rng = new Random(seed);
-        Color[][] px = new Color[width][height];
-        for (int x = 0; x < width; x++)
-            for (int y = 0; y < height; y++)
-                px[x][y] = new Color(rng.nextInt(256), rng.nextInt(256), rng.nextInt(256));
-        return ImageData.of(px, width, height);
-    }
+    public static void exportCsv(List<BenchmarkResult> results, Path dest) throws IOException {
+        // ── Arrange ──────────────────────────────────────────────────────────
+        var seqBySize = results.stream()
+                .filter(r -> r.getImplName().equals("Sequential"))
+                .collect(Collectors.toMap(BenchmarkResult::getSizeLabel, BenchmarkResult::getAvgMs));
 
-    // ── CSV exporters ─────────────────────────────────────────────────────────────
+        var sizeOrder = results.stream()
+                .map(BenchmarkResult::getSizeLabel)
+                .distinct()
+                .toList();
 
-    public static void exportTimeCsv(List<BenchmarkResult> results, String file) throws IOException {
-        try (PrintWriter w = new PrintWriter(new FileWriter(file))) {
-            w.println("implementation,imageSize,threadCount,avgWallMs,minWallMs,maxWallMs,stdDevMs");
-            for (BenchmarkResult r : results)
-                w.printf("\"%s\",\"%s\",%d,%.3f,%.3f,%.3f,%.3f%n",
-                        r.implName(), r.sizeLabel(), r.threadCount(),
-                        r.avgWallMs(), r.minWallMs(), r.maxWallMs(), r.stdDevMs());
+        var sorted = new ArrayList<>(results);
+        sorted.sort(Comparator
+                .<BenchmarkResult, Integer>comparing(r -> sizeOrder.indexOf(r.getSizeLabel()))
+                .thenComparing(r -> r.getImplName().equals("Sequential") ? 0 : 1)
+                .thenComparing(BenchmarkResult::getThreadCount)
+                .thenComparing(BenchmarkResult::getImplName));
+
+        // ── Act ──────────────────────────────────────────────────────────────
+        try (var w = new PrintWriter(new FileWriter(dest.toFile()))) {
+            w.println(BenchmarkResult.csvHeader());
+            for (var r : sorted) {
+                double seqMs = seqBySize.getOrDefault(r.getSizeLabel(), r.getAvgMs());
+                w.println(r.toCsvRow(seqMs));
+            }
         }
+
+        // ── Assert ───────────────────────────────────────────────────────────
+        System.out.printf("  ✓ Written %d rows → %s%n", sorted.size(), dest);
     }
 
-    public static void exportMemoryCsv(List<BenchmarkResult> results, String file) throws IOException {
-        try (PrintWriter w = new PrintWriter(new FileWriter(file))) {
-            w.println("implementation,imageSize,threadCount,heapBeforeBytes,heapAfterBytes,heapDeltaBytes");
-            for (BenchmarkResult r : results)
-                w.printf("\"%s\",\"%s\",%d,%d,%d,%d%n",
-                        r.implName(), r.sizeLabel(), r.threadCount(),
-                        r.heapBeforeBytes(), r.heapAfterBytes(),
-                        r.heapAfterBytes() - r.heapBeforeBytes());
-        }
+    // ── Summary export (human-readable text report)
+    // ──────────────────────────
+
+    public static void exportSummary(List<BenchmarkResult> results, Path dest) throws IOException {
+        var summary = BenchmarkSummary.of(results, WARMUP, MEASURED);
+        Files.writeString(dest, summary.render());
+        System.out.printf("  ✓ Summary     → %s%n", dest);
     }
 
-    public static void exportGcCsv(List<BenchmarkResult> results, String file) throws IOException {
-        try (PrintWriter w = new PrintWriter(new FileWriter(file))) {
-            w.println("implementation,imageSize,threadCount,gcCountDelta,gcTimeMsDelta,avgSystemLoad");
-            for (BenchmarkResult r : results)
-                w.printf("\"%s\",\"%s\",%d,%d,%d,%.4f%n",
-                        r.implName(), r.sizeLabel(), r.threadCount(),
-                        r.gcCountDelta(), r.gcTimeMsDelta(), r.avgSystemLoad());
-        }
+    // ── console helpers
+    // ───────────────────────────────────────────────────────────
+
+    private static void printHeader() {
+        System.out.println("╔══════════════════════════════════════════════════════════╗");
+        System.out.println("║         SISMD Benchmark — Histogram Equalization        ║");
+        System.out.println("╚══════════════════════════════════════════════════════════╝");
+        System.out.printf("  Date    : %s%n",
+                LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+        System.out.printf("  JVM     : %s%n", System.getProperty("java.version"));
+        System.out.printf("  Cores   : %d%n", Runtime.getRuntime().availableProcessors());
+        System.out.printf("  Source  : input2.jpg (downscaled to 4 sizes)%n%n");
     }
 
-    // ── data types ────────────────────────────────────────────────────────────────
+    private static void printFooter() {
+        System.out.println();
+        System.out.println("╔══════════════════════════════════════════════════════════╗");
+        System.out.println("║  Done — results/benchmark.csv                           ║");
+        System.out.println("║         results/summary.txt                             ║");
+        System.out.println("║         results/*.png  (XChart)                         ║");
+        System.out.println("╚══════════════════════════════════════════════════════════╝");
+    }
 
-    public record BenchmarkResult(
-            String implName,
-            String sizeLabel,
-            int    threadCount,
-            double avgWallMs,
-            double minWallMs,
-            double maxWallMs,
-            double stdDevMs,
-            long   heapBeforeBytes,
-            long   heapAfterBytes,
-            long   gcCountDelta,
-            long   gcTimeMsDelta,
-            double avgSystemLoad
-    ) {}
+    // ── data types
+    // ────────────────────────────────────────────────────────────────
 
-    public record GCSnapshot(long count, long timeMs) {}
+    public record GCSnapshot(long count, long timeMs) {
+    }
 
-    private record ImplSpec(String name, ImageProcessingService service, int threadCount) {}
+    private record ImplSpec(String name, ImageProcessingService service, int threadCount) {
+    }
 }

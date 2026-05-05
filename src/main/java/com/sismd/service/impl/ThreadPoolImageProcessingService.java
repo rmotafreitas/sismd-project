@@ -3,22 +3,22 @@ package com.sismd.service.impl;
 import com.sismd.model.ImageData;
 import com.sismd.service.ImageProcessingService;
 
-import java.awt.Color;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.function.IntUnaryOperator;
 
 /**
  * Histogram equalization using a fixed-size thread pool (ExecutorService).
  *
- * Stage 1 (histogram):   each partition submits a Callable that returns a
- *                        partial int[256]; results are merged after all futures complete.
- * Stage 2 (cumulative):  sequential prefix-sum on the calling thread.
+ * Stage 1 (histogram): each partition submits a Callable that returns a
+ * partial int[256]; results are merged after all futures complete.
+ * Stage 2 (cumulative): sequential prefix-sum on the calling thread.
  * Stage 3 (pixel write): each partition submits a Runnable; writes to disjoint
- *                        columns so no synchronisation is needed on the output array.
+ * columns so no synchronisation is needed on the output array.
  *
  * The pool is created per process() call and shut down in a finally block
  * to guarantee no thread leak even when an exception is thrown.
@@ -32,22 +32,23 @@ public class ThreadPoolImageProcessingService implements ImageProcessingService 
     }
 
     public ThreadPoolImageProcessingService(int poolSize) {
-        if (poolSize < 1) throw new IllegalArgumentException("poolSize must be >= 1");
+        if (poolSize < 1)
+            throw new IllegalArgumentException("poolSize must be >= 1");
         this.poolSize = poolSize;
     }
 
     @Override
     public ImageData process(ImageData input) {
-        int w = input.getWidth(), h = input.getHeight();
-        int totalPixels = w * h;
-        int threads = Math.min(poolSize, w);
+        var w = input.getWidth();
+        var h = input.getHeight();
+        var totalPixels = w * h;
+        var threads = Math.min(poolSize, w);
 
         ExecutorService pool = Executors.newFixedThreadPool(threads);
         try {
-            int[] hist       = computeHistogramParallel(input, w, h, threads, pool);
-            int[] cumulative = HistogramUtils.buildCumulativeHistogram(hist);
-            int   cdfMin     = HistogramUtils.firstNonZero(cumulative);
-            Color[][] out    = applyEqualizationParallel(input, w, h, cumulative, totalPixels, cdfMin, threads, pool);
+            var hist = computeHistogramParallel(input, w, h, threads, pool);
+            var cumulative = HistogramUtils.buildCumulativeHistogram(hist);
+            var out = applyEqualizationParallel(input, w, h, cumulative, totalPixels, threads, pool);
             return ImageData.of(out, w, h);
         } finally {
             pool.shutdown();
@@ -57,13 +58,13 @@ public class ThreadPoolImageProcessingService implements ImageProcessingService 
     // ── stage 1 ──────────────────────────────────────────────────────────────────
 
     private int[] computeHistogramParallel(ImageData img, int w, int h,
-                                            int threads, ExecutorService pool) {
+            int threads, ExecutorService pool) {
         int colsPerThread = (w + threads - 1) / threads;
         List<Future<int[]>> futures = new ArrayList<>(threads);
 
         for (int t = 0; t < threads; t++) {
             final int startCol = t * colsPerThread;
-            final int endCol   = Math.min(startCol + colsPerThread, w);
+            final int endCol = Math.min(startCol + colsPerThread, w);
             futures.add(pool.submit(() -> {
                 int[] partial = new int[256];
                 for (int x = startCol; x < endCol; x++)
@@ -89,23 +90,23 @@ public class ThreadPoolImageProcessingService implements ImageProcessingService 
 
     // ── stage 3 ──────────────────────────────────────────────────────────────────
 
-    private Color[][] applyEqualizationParallel(ImageData img, int w, int h, int[] cumulative,
-                                                 int totalPixels, int cdfMin,
-                                                 int threads, ExecutorService pool) {
+    private int[] applyEqualizationParallel(ImageData img, int w, int h, int[] cumulative,
+            int totalPixels,
+            int threads, ExecutorService pool) {
         int colsPerThread = (w + threads - 1) / threads;
-        Color[][] out = new Color[w][h];
+        var out = new int[w * h];
         List<Future<?>> futures = new ArrayList<>(threads);
+
+        // Functional pixel mapper — shared (stateless), created once
+        IntUnaryOperator eq = HistogramUtils.equalizer(cumulative, totalPixels);
 
         for (int t = 0; t < threads; t++) {
             final int startCol = t * colsPerThread;
-            final int endCol   = Math.min(startCol + colsPerThread, w);
+            final int endCol = Math.min(startCol + colsPerThread, w);
             futures.add(pool.submit(() -> {
                 for (int x = startCol; x < endCol; x++)
-                    for (int y = 0; y < h; y++) {
-                        int lum    = HistogramUtils.luminosity(img.getPixel(x, y));
-                        int newLum = HistogramUtils.equalize(cumulative[lum], totalPixels, cdfMin);
-                        out[x][y]  = new Color(newLum, newLum, newLum);
-                    }
+                    for (int y = 0; y < h; y++)
+                        out[x * h + y] = eq.applyAsInt(img.getPixel(x, y));
             }));
         }
 

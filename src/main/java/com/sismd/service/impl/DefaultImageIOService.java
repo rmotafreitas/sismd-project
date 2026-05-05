@@ -4,7 +4,6 @@ import com.sismd.model.ImageData;
 import com.sismd.service.ImageIOService;
 
 import javax.imageio.ImageIO;
-import java.awt.Color;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
@@ -16,13 +15,10 @@ public class DefaultImageIOService implements ImageIOService {
     public ImageData load(File file) {
         BufferedImage img = readFile(file);
         int w = img.getWidth(), h = img.getHeight();
-        Color[][] pixels = new Color[w][h];
-        for (int x = 0; x < w; x++) {
-            for (int y = 0; y < h; y++) {
-                int rgb = img.getRGB(x, y);
-                pixels[x][y] = new Color((rgb >> 16) & 0xFF, (rgb >> 8) & 0xFF, rgb & 0xFF);
-            }
-        }
+        int[] pixels = new int[w * h];
+        for (int x = 0; x < w; x++)
+            for (int y = 0; y < h; y++)
+                pixels[x * h + y] = img.getRGB(x, y) & 0x00FFFFFF;
         return ImageData.of(pixels, w, h);
     }
 
@@ -38,12 +34,11 @@ public class DefaultImageIOService implements ImageIOService {
 
     @Override
     public BufferedImage toBufferedImage(ImageData data) {
-        BufferedImage img = new BufferedImage(data.getWidth(), data.getHeight(), BufferedImage.TYPE_INT_RGB);
-        for (int x = 0; x < data.getWidth(); x++) {
-            for (int y = 0; y < data.getHeight(); y++) {
-                img.setRGB(x, y, data.getPixel(x, y).getRGB());
-            }
-        }
+        int w = data.getWidth(), h = data.getHeight();
+        BufferedImage img = new BufferedImage(w, h, BufferedImage.TYPE_INT_RGB);
+        for (int x = 0; x < w; x++)
+            for (int y = 0; y < h; y++)
+                img.setRGB(x, y, data.getPixel(x, y));
         return img;
     }
 

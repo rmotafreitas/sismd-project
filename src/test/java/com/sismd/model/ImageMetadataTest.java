@@ -17,56 +17,83 @@ class ImageMetadataTest {
 
     @Test
     void fromFile_extractsNameAndFormat(@TempDir Path tmp) throws IOException {
+        // Arrange
         File file = tmp.resolve("photo.png").toFile();
         Files.write(file.toPath(), new byte[2048]);
 
+        // Act
         ImageMetadata meta = ImageMetadata.fromFile(file, 100, 80);
 
+        // Assert
         assertThat(meta.getName()).isEqualTo("photo.png");
         assertThat(meta.getFormat()).isEqualTo("PNG");
     }
 
     @Test
     void fromFile_readsSizeBytes(@TempDir Path tmp) throws IOException {
+        // Arrange
         File file = tmp.resolve("img.jpg").toFile();
         Files.write(file.toPath(), new byte[4096]);
 
+        // Act
         ImageMetadata meta = ImageMetadata.fromFile(file, 10, 10);
 
+        // Assert
         assertThat(meta.getSizeBytes()).isEqualTo(4096L);
     }
 
     @Test
     void getPixelCount_returnsWidthTimesHeight() {
+        // Arrange
         ImageMetadata meta = builder(640, 480).build();
-        assertThat(meta.getPixelCount()).isEqualTo(307_200L);
+
+        // Act
+        long count = meta.getPixelCount();
+
+        // Assert
+        assertThat(count).isEqualTo(307_200L);
     }
 
     @Test
     void getDimensions_formatsCorrectly() {
+        // Arrange
         ImageMetadata meta = builder(1920, 1080).build();
-        assertThat(meta.getDimensions()).isEqualTo("1920 × 1080 px");
+
+        // Act
+        String dims = meta.getDimensions();
+
+        // Assert
+        assertThat(dims).isEqualTo("1920 × 1080 px");
     }
 
     @ParameterizedTest
     @CsvSource({
-        "512,   '512 B'",
-        "1024,  '1.0 KB'",
-        "2048,  '2.0 KB'",
-        "1048576,  '1.00 MB'",
-        "2097152,  '2.00 MB'"
+            "512,   '512 B'",
+            "1024,  '1.0 KB'",
+            "2048,  '2.0 KB'",
+            "1048576,  '1.00 MB'",
+            "2097152,  '2.00 MB'"
     })
     void getHumanSize_formatsCorrectly(long bytes, String expected) {
+        // Arrange
         ImageMetadata meta = ImageMetadata.builder()
                 .name("x.jpg").format("JPG").sizeBytes(bytes).width(1).height(1)
                 .build();
-        assertThat(meta.getHumanSize()).isEqualTo(expected);
+
+        // Act
+        String humanSize = meta.getHumanSize();
+
+        // Assert
+        assertThat(humanSize).isEqualTo(expected);
     }
 
     @Test
     void fromFile_invalidWidth_throws(@TempDir Path tmp) throws IOException {
+        // Arrange
         File file = tmp.resolve("img.jpg").toFile();
         Files.write(file.toPath(), new byte[1]);
+
+        // Act & Assert
         assertThatThrownBy(() -> ImageMetadata.fromFile(file, 0, 100))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("width");

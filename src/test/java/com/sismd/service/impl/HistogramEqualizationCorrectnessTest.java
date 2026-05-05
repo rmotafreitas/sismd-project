@@ -5,7 +5,6 @@ import com.sismd.service.ImageProcessingService;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
-import java.awt.Color;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -55,7 +54,7 @@ class HistogramEqualizationCorrectnessTest {
     @ParameterizedTest(name = "{0} — uniform image")
     @MethodSource("implementations")
     void uniformImage_matchesSequentialBaseline(ImageProcessingService impl) {
-        assertMatchesBaseline(impl, TestImageFactory.createUniform(50, 50, new Color(128, 64, 200)));
+        assertMatchesBaseline(impl, TestImageFactory.createUniform(50, 50, new java.awt.Color(128, 64, 200)));
     }
 
     // ── helpers ───────────────────────────────────────────────────────────────────
@@ -69,8 +68,8 @@ class HistogramEqualizationCorrectnessTest {
 
         for (int x = 0; x < expected.getWidth(); x++)
             for (int y = 0; y < expected.getHeight(); y++)
-                assertThat(actual.getPixel(x, y).getRGB())
+                assertThat(actual.getPixel(x, y))
                         .describedAs("pixel mismatch at (%d, %d)", x, y)
-                        .isEqualTo(expected.getPixel(x, y).getRGB());
+                        .isEqualTo(expected.getPixel(x, y));
     }
 }

@@ -1,4 +1,4 @@
-.PHONY: run build test benchmark clean
+.PHONY: run build test benchmark benchmark-gc clean
 
 run: build
 	mvn javafx:run
@@ -11,6 +11,9 @@ test:
 
 benchmark: build
 	mvn exec:java -Dexec.mainClass="com.sismd.benchmark.BenchmarkRunner"
+
+benchmark-gc: build
+	./benchmark-gc.sh
 
 clean:
 	mvn clean

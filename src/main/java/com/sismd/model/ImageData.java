@@ -3,17 +3,17 @@ package com.sismd.model;
 import lombok.Builder;
 import lombok.Getter;
 
-import java.awt.Color;
-
 @Getter
 @Builder
 public class ImageData {
 
-    private final Color[][] pixels;
+    // Packed RGB ints in column-major order: index = x * height + y.
+    // No per-pixel object allocation; 4 bytes per pixel instead of ~32.
+    private final int[] pixels;
     private final int width;
     private final int height;
 
-    public static ImageData of(Color[][] pixels, int width, int height) {
+    public static ImageData of(int[] pixels, int width, int height) {
         if (pixels == null) throw new IllegalStateException("pixels must be set");
         if (width  <= 0)    throw new IllegalStateException("width must be positive");
         if (height <= 0)    throw new IllegalStateException("height must be positive");
@@ -24,7 +24,7 @@ public class ImageData {
         return (long) width * height;
     }
 
-    public Color getPixel(int x, int y) {
-        return pixels[x][y];
+    public int getPixel(int x, int y) {
+        return pixels[x * height + y];
     }
 }
