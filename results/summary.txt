@@ -1,36 +1,52 @@
 ═══════════════════════════════════════════════════════════
   BENCHMARK SUMMARY
 ═══════════════════════════════════════════════════════════
-  Date           : 2026-05-06 01:18:55
+  Date           : 2026-05-06 01:23:27
   JVM            : 21.0.6
   CPU Cores      : 11
+  GC Collector   : G1 Young Generation + G1 Concurrent GC + G1 Old Generation
   Warmup runs    : 3
   Measured runs  : 10
   Total configs  : 88
 
-  Small(640x360)
-    Sequential baseline : 0.904 ms
-    Best parallel       : ForkJoin(threshold=50)              → 0.350 ms  (×2.58)
-    Worst parallel      : ForkJoin(threshold=10)              → 4.141 ms
-    Average (all)       : 0.878 ms
+  ── Small(640x360) ──
+    Sequential baseline : 1.012 ms  σ=0.075 ms  cpu=2.1 ms  eff=205%
+    Best wall time      : ForkJoin(threshold=50)              → 0.421 ms  ×2.40  eff=665%  alloc=9.17 MB
+    Best CPU efficiency : ForkJoin(threshold=10)              → eff=857%  3.558 ms  ×0.28
+    Least allocation    : ManualThreads(t=1)                  → 8.83 MB
+    Worst wall time     : ForkJoin(threshold=10)              → 3.558 ms
+    Average (all)       : 0.915 ms
+    GC pressure (avg)   : 0 cycles  0 ms pause  9.03 MB alloc/run
 
-  Medium(1920x1080)
-    Sequential baseline : 7.679 ms
-    Best parallel       : ForkJoin(threshold=200)             → 1.854 ms  (×4.14)
-    Worst parallel      : ManualThreads(t=1)                  → 8.367 ms
-    Average (all)       : 3.703 ms
+  ── Medium(1920x1080) ──
+    Sequential baseline : 7.696 ms  σ=0.061 ms  cpu=7.7 ms  eff=101%
+    Best wall time      : ForkJoin(threshold=50)              → 1.998 ms  ×3.85  eff=732%  alloc=80.61 MB
+    Best CPU efficiency : ForkJoin(threshold=10)              → eff=765%  2.332 ms  ×3.30
+    Least allocation    : ManualThreads(t=1)                  → 79.14 MB
+    Worst wall time     : CompletableFuture(t=1)              → 9.268 ms
+    Average (all)       : 3.919 ms
+    GC pressure (avg)   : 0 cycles  0 ms pause  79.63 MB alloc/run
 
-  Large(4096x2304)
-    Sequential baseline : 35.901 ms
-    Best parallel       : ForkJoin(threshold=10)              → 7.269 ms  (×4.94)
-    Worst parallel      : ManualThreads(t=1)                  → 41.963 ms
-    Average (all)       : 16.465 ms
+  ── Large(4096x2304) ──
+    Sequential baseline : 37.278 ms  σ=0.614 ms  cpu=37.4 ms  eff=100%
+    Best wall time      : ForkJoin(threshold=50)              → 7.219 ms  ×5.16  eff=806%  alloc=363.00 MB
+    Least allocation    : ManualThreads(t=1)                  → 360.04 MB
+    Worst wall time     : ThreadPool(t=1)                     → 40.369 ms
+    Average (all)       : 16.895 ms
+    GC pressure (avg)   : 3 cycles  1 ms pause  360.90 MB alloc/run
 
-  Original(8192x4608)
-    Sequential baseline : 146.284 ms
-    Best parallel       : ForkJoin(threshold=10)              → 27.746 ms  (×5.27)
-    Worst parallel      : ManualThreads(t=1)                  → 172.454 ms
-    Average (all)       : 65.405 ms
+  ── Original(8192x4608) ──
+    Sequential baseline : 152.228 ms  σ=7.083 ms  cpu=152.0 ms  eff=100%
+    Best wall time      : ForkJoin(threshold=200)             → 28.453 ms  ×5.35  eff=808%  alloc=1441.51 MB
+    Best CPU efficiency : ForkJoin(threshold=10)              → eff=832%  29.266 ms  ×5.20
+    Least allocation    : ManualThreads(t=1)                  → 1440.04 MB
+    Worst wall time     : ManualThreads(t=1)                  → 167.794 ms
+    Average (all)       : 65.596 ms
+    GC pressure (avg)   : 10 cycles  5 ms pause  1441.65 MB alloc/run
 
-  OVERALL FASTEST: ForkJoin(threshold=50) on Small(640x360) → 0.350 ms (×2.58)
+  ── GLOBAL HIGHLIGHTS ──────────────────────────────────
+  Fastest overall     : ForkJoin(threshold=50)              on Small(640x360)       → 0.421 ms  ×2.40
+  Best CPU efficiency : ForkJoin(threshold=10)              on Small(640x360)       → 857%
+  Least GC pause      : ManualThreads(t=1)                  on Small(640x360)       → 0 ms
+  Least allocation    : ManualThreads(t=1)                  on Small(640x360)       → 8.83 MB
 ═══════════════════════════════════════════════════════════
