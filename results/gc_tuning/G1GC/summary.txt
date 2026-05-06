@@ -1,0 +1,36 @@
+═══════════════════════════════════════════════════════════
+  BENCHMARK SUMMARY
+═══════════════════════════════════════════════════════════
+  Date           : 2026-05-06 01:03:49
+  JVM            : 21.0.6
+  CPU Cores      : 11
+  Warmup runs    : 3
+  Measured runs  : 10
+  Total configs  : 88
+
+  Small(640x360)
+    Sequential baseline : 1.036 ms
+    Best parallel       : ForkJoin(threshold=50)              → 0.352 ms  (×2.94)
+    Worst parallel      : ManualThreads(t=1)                  → 2.929 ms
+    Average (all)       : 0.934 ms
+
+  Medium(1920x1080)
+    Sequential baseline : 7.545 ms
+    Best parallel       : ForkJoin(threshold=10)              → 1.986 ms  (×3.80)
+    Worst parallel      : ManualThreads(t=1)                  → 8.217 ms
+    Average (all)       : 3.471 ms
+
+  Large(4096x2304)
+    Sequential baseline : 38.405 ms
+    Best parallel       : ForkJoin(threshold=50)              → 6.418 ms  (×5.98)
+    Worst parallel      : ManualThreads(t=1)                  → 39.814 ms
+    Average (all)       : 15.909 ms
+
+  Original(8192x4608)
+    Sequential baseline : 143.532 ms
+    Best parallel       : ForkJoin(threshold=10)              → 24.582 ms  (×5.84)
+    Worst parallel      : CompletableFuture(t=1)              → 164.727 ms
+    Average (all)       : 60.703 ms
+
+  OVERALL FASTEST: ForkJoin(threshold=50) on Small(640x360) → 0.352 ms (×2.94)
+═══════════════════════════════════════════════════════════

@@ -36,10 +36,15 @@ public class JmxPerformanceAdapter implements PerformanceMonitor {
     private final MemoryMXBean memBean = ManagementFactory.getMemoryMXBean();
     private final List<GarbageCollectorMXBean> gcBeans = ManagementFactory.getGarbageCollectorMXBeans();
     private final com.sun.management.OperatingSystemMXBean osBean;
+    private final String gcCollector;
 
     public JmxPerformanceAdapter() {
         java.lang.management.OperatingSystemMXBean raw = ManagementFactory.getOperatingSystemMXBean();
         osBean = raw instanceof com.sun.management.OperatingSystemMXBean sun ? sun : null;
+        gcCollector = gcBeans.stream()
+                .map(GarbageCollectorMXBean::getName)
+                .reduce((a, b) -> a + " + " + b)
+                .orElse("unknown");
     }
 
     // captured at start()
@@ -90,8 +95,23 @@ public class JmxPerformanceAdapter implements PerformanceMonitor {
                 ? String.format("%.1f%%", 100.0 * cpuNs / wallNs)
                 : "n/a";
 
+        double heapBeforeMb = startHeapUsed / 1_048_576.0;
+        double heapAfterMb = heapAfter / 1_048_576.0;
+        double allocMb = allocated >= 0 ? allocated / 1_048_576.0 : 0.0;
+
         return new DefaultPerformanceSnapshot.Builder()
                 .wallTimeMs(wallMs)
+                // ── typed numeric fields ─────────────────────────────────────
+                .cpuTimeMs(cpuMs)
+                .cpuEfficiencyPct(wallNs > 0 && cpuNs >= 0 ? 100.0 * cpuNs / wallNs : 0.0)
+                .allocatedMb(allocMb)
+                .heapBeforeMb(heapBeforeMb)
+                .heapAfterMb(heapAfterMb)
+                .gcCycles(gcCycles)
+                .gcPauseMs(gcPauseMs)
+                .peakThreads(peakThreads)
+                .gcCollector(gcCollector)
+                // ── human-readable display strings (UI metrics panel) ────────
                 .metric("CPU time", cpuMs >= 0 ? cpuMs + " ms" : "n/a")
                 .metric("CPU efficiency", cpuEff)
                 .metric("Threads", startThreadCount + " → peak " + peakThreads + " → " + endThreads)

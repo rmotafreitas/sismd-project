@@ -28,12 +28,13 @@ public final class BenchmarkCharts {
     }
 
     private static final String[] IMPL_PREFIXES = {
-            "ManualThreads", "ThreadPool", "CompletableFuture"
+            "ManualThreads", "ThreadPool", "CompletableFuture", "ForkJoin"
     };
     private static final Color[] IMPL_COLORS = {
             new Color(68, 114, 196), // blue
             new Color(237, 125, 49), // orange
             new Color(112, 173, 71), // green
+            new Color(165, 42, 42), // dark-red
     };
 
     // ── public API ───────────────────────────────────────────────────────────
@@ -74,6 +75,9 @@ public final class BenchmarkCharts {
         if (!largeResults.isEmpty()) {
             saveChart(gcPauseChart(largeResults, largestSize), outputDir, "gc_pause");
             saveChart(heapDeltaChart(largeResults, largestSize), outputDir, "heap_delta");
+            saveChart(cpuEfficiencyChart(largeResults, largestSize), outputDir, "cpu_efficiency");
+            saveChart(cpuTimeChart(largeResults, largestSize), outputDir, "cpu_time");
+            saveChart(allocatedChart(largeResults, largestSize), outputDir, "allocated");
         }
 
         // ── Assert ───────────────────────────────────────────────────────────
@@ -105,22 +109,6 @@ public final class BenchmarkCharts {
             var s = chart.addSeries(prefix, xs, ys);
             s.setLineColor(IMPL_COLORS[i]);
             s.setMarkerColor(IMPL_COLORS[i]);
-        }
-
-        // ForkJoin as distinct points
-        var fj = subset.stream()
-                .filter(r -> r.getImplName().startsWith("ForkJoin"))
-                .sorted(Comparator.comparingDouble(BenchmarkResult::getAvgMs))
-                .toList();
-        if (!fj.isEmpty()) {
-            var best = fj.get(0);
-            var xs = List.of((double) best.getThreadCount());
-            var ys = List.of(best.getAvgMs());
-            var s = chart.addSeries("ForkJoin (best)", xs, ys);
-            s.setLineColor(new Color(165, 42, 42));
-            s.setMarkerColor(new Color(165, 42, 42));
-            s.setLineStyle(SeriesLines.NONE);
-            s.setMarker(SeriesMarkers.DIAMOND);
         }
 
         // Sequential baseline
@@ -230,23 +218,6 @@ public final class BenchmarkCharts {
             s.setLineStyle(SeriesLines.DASH_DASH);
         }
 
-        // ForkJoin best
-        List<Double> fjXs = new ArrayList<>(), fjYs = new ArrayList<>();
-        for (var size : sizeOrder) {
-            var best = results.stream()
-                    .filter(r -> r.getSizeLabel().equals(size) && r.getImplName().startsWith("ForkJoin"))
-                    .min(Comparator.comparingDouble(BenchmarkResult::getAvgMs));
-            if (best.isPresent()) {
-                fjXs.add((double) best.get().getWidth() * best.get().getHeight() / 1_000_000.0);
-                fjYs.add(best.get().getAvgMs());
-            }
-        }
-        if (!fjXs.isEmpty()) {
-            var s = chart.addSeries("ForkJoin (best)", fjXs, fjYs);
-            s.setLineColor(new Color(165, 42, 42));
-            s.setMarkerColor(new Color(165, 42, 42));
-        }
-
         return chart;
     }
 
@@ -280,24 +251,6 @@ public final class BenchmarkCharts {
                 s.setLineColor(IMPL_COLORS[i]);
                 s.setMarkerColor(IMPL_COLORS[i]);
             }
-        }
-
-        // ForkJoin best
-        List<Double> fjXs = new ArrayList<>(), fjYs = new ArrayList<>();
-        for (var size : sizeOrder) {
-            double seqMs = seqBySize.getOrDefault(size, 1.0);
-            var best = results.stream()
-                    .filter(r -> r.getSizeLabel().equals(size) && r.getImplName().startsWith("ForkJoin"))
-                    .min(Comparator.comparingDouble(BenchmarkResult::getAvgMs));
-            if (best.isPresent()) {
-                fjXs.add((double) best.get().getWidth() * best.get().getHeight() / 1_000_000.0);
-                fjYs.add(seqMs / best.get().getAvgMs());
-            }
-        }
-        if (!fjXs.isEmpty()) {
-            var s = chart.addSeries("ForkJoin (best)", fjXs, fjYs);
-            s.setLineColor(new Color(165, 42, 42));
-            s.setMarkerColor(new Color(165, 42, 42));
         }
 
         return chart;
@@ -336,6 +289,52 @@ public final class BenchmarkCharts {
                 .toList();
         var s = chart.addSeries("Heap Delta", names, values);
         s.setFillColor(new Color(237, 125, 49));
+        return chart;
+    }
+
+    private static CategoryChart cpuEfficiencyChart(List<BenchmarkResult> subset, String sizeLabel) {
+        var chart = new CategoryChartBuilder()
+                .width(900).height(450)
+                .title("CPU Efficiency — " + sizeLabel)
+                .xAxisTitle("Implementation")
+                .yAxisTitle("CPU Efficiency (%)")
+                .build();
+        styleCategory(chart);
+        chart.getStyler().setLegendVisible(false);
+        var names = subset.stream().map(BenchmarkResult::getImplName).toList();
+        var values = subset.stream().map(r -> (Number) r.getCpuEfficiencyPct()).toList();
+        var s = chart.addSeries("CPU Efficiency %", names, values);
+        s.setFillColor(new Color(112, 173, 71));
+        return chart;
+    }
+
+    private static CategoryChart cpuTimeChart(List<BenchmarkResult> subset, String sizeLabel) {
+        var chart = new CategoryChartBuilder()
+                .width(900).height(450)
+                .title("Avg CPU Time per Run — " + sizeLabel)
+                .xAxisTitle("Implementation")
+                .yAxisTitle("CPU Time (ms)")
+                .build();
+        styleCategory(chart);
+        var names = subset.stream().map(BenchmarkResult::getImplName).toList();
+        var values = subset.stream().map(r -> (Number) r.getCpuTimeMs()).toList();
+        var s = chart.addSeries("CPU Time ms", names, values);
+        s.setFillColor(new Color(68, 114, 196));
+        return chart;
+    }
+
+    private static CategoryChart allocatedChart(List<BenchmarkResult> subset, String sizeLabel) {
+        var chart = new CategoryChartBuilder()
+                .width(900).height(450)
+                .title("Allocated Memory — " + sizeLabel)
+                .xAxisTitle("Implementation")
+                .yAxisTitle("Allocated (MB)")
+                .build();
+        styleCategory(chart);
+        var names = subset.stream().map(BenchmarkResult::getImplName).toList();
+        var values = subset.stream().map(r -> (Number) r.getAllocatedMb()).toList();
+        var s = chart.addSeries("Allocated MB", names, values);
+        s.setFillColor(new Color(165, 42, 42));
         return chart;
     }
 

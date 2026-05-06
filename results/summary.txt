@@ -1,7 +1,7 @@
 ═══════════════════════════════════════════════════════════
   BENCHMARK SUMMARY
 ═══════════════════════════════════════════════════════════
-  Date           : 2026-05-06 00:55:18
+  Date           : 2026-05-06 01:18:55
   JVM            : 21.0.6
   CPU Cores      : 11
   Warmup runs    : 3
@@ -9,28 +9,28 @@
   Total configs  : 88
 
   Small(640x360)
-    Sequential baseline : 0.984 ms
-    Best parallel       : ForkJoin(threshold=50)              → 0.357 ms  (×2.75)
-    Worst parallel      : ForkJoin(threshold=10)              → 3.276 ms
-    Average (all)       : 0.982 ms
+    Sequential baseline : 0.904 ms
+    Best parallel       : ForkJoin(threshold=50)              → 0.350 ms  (×2.58)
+    Worst parallel      : ForkJoin(threshold=10)              → 4.141 ms
+    Average (all)       : 0.878 ms
 
   Medium(1920x1080)
-    Sequential baseline : 8.132 ms
-    Best parallel       : ForkJoin(threshold=50)              → 1.996 ms  (×4.07)
-    Worst parallel      : ThreadPool(t=1)                     → 8.956 ms
-    Average (all)       : 4.005 ms
+    Sequential baseline : 7.679 ms
+    Best parallel       : ForkJoin(threshold=200)             → 1.854 ms  (×4.14)
+    Worst parallel      : ManualThreads(t=1)                  → 8.367 ms
+    Average (all)       : 3.703 ms
 
   Large(4096x2304)
-    Sequential baseline : 40.068 ms
-    Best parallel       : ForkJoin(threshold=50)              → 7.182 ms  (×5.58)
-    Worst parallel      : ThreadPool(t=1)                     → 43.510 ms
-    Average (all)       : 17.214 ms
+    Sequential baseline : 35.901 ms
+    Best parallel       : ForkJoin(threshold=10)              → 7.269 ms  (×4.94)
+    Worst parallel      : ManualThreads(t=1)                  → 41.963 ms
+    Average (all)       : 16.465 ms
 
   Original(8192x4608)
-    Sequential baseline : 148.400 ms
-    Best parallel       : ForkJoin(threshold=50)              → 27.896 ms  (×5.32)
-    Worst parallel      : ThreadPool(t=1)                     → 162.788 ms
-    Average (all)       : 64.519 ms
+    Sequential baseline : 146.284 ms
+    Best parallel       : ForkJoin(threshold=10)              → 27.746 ms  (×5.27)
+    Worst parallel      : ManualThreads(t=1)                  → 172.454 ms
+    Average (all)       : 65.405 ms
 
-  OVERALL FASTEST: ForkJoin(threshold=50) on Small(640x360) → 0.357 ms (×2.75)
+  OVERALL FASTEST: ForkJoin(threshold=50) on Small(640x360) → 0.350 ms (×2.58)
 ═══════════════════════════════════════════════════════════

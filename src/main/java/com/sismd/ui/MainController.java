@@ -63,12 +63,13 @@ import java.util.UUID;
 
 public class MainController {
 
-    // ── service wiring ────────────────────────────────────────────────────────────
-    private final ImageIOService       ioService         = new DefaultImageIOService();
-    private final ImageMetadataService metadataService   = new DefaultImageMetadataService(ioService);
-    private final PerformanceMonitor   monitor           = new JmxPerformanceAdapter();
-    private final SystemInfoService    systemInfoService = new DefaultSystemInfoAdapter();
-    private final CsvExporter          csvExporter       = new CsvExporter();
+    // ── service wiring
+    // ────────────────────────────────────────────────────────────
+    private final ImageIOService ioService = new DefaultImageIOService();
+    private final ImageMetadataService metadataService = new DefaultImageMetadataService(ioService);
+    private final PerformanceMonitor monitor = new JmxPerformanceAdapter();
+    private final SystemInfoService systemInfoService = new DefaultSystemInfoAdapter();
+    private final CsvExporter csvExporter = new CsvExporter();
 
     // swapped via the algorithm dropdown
     private ImageProcessingService processingService;
@@ -77,74 +78,111 @@ public class MainController {
 
     private GenerationRepository genRepo;
 
-    // ── history row styles ────────────────────────────────────────────────────────
-    private static final String HIST_ROW_BASE =
-            "-fx-background-color: #f8fafc; -fx-border-color: #e2e8f0; -fx-border-radius: 6; " +
+    // ── history row styles
+    // ────────────────────────────────────────────────────────
+    private static final String HIST_ROW_BASE = "-fx-background-color: #f8fafc; -fx-border-color: #e2e8f0; -fx-border-radius: 6; "
+            +
             "-fx-background-radius: 6; -fx-padding: 6 8; -fx-cursor: hand;";
-    private static final String HIST_ROW_HOVER =
-            "-fx-background-color: #f1f5f9; -fx-border-color: #cbd5e1; -fx-border-radius: 6; " +
+    private static final String HIST_ROW_HOVER = "-fx-background-color: #f1f5f9; -fx-border-color: #cbd5e1; -fx-border-radius: 6; "
+            +
             "-fx-background-radius: 6; -fx-padding: 6 8; -fx-cursor: hand;";
-    private static final String HIST_ROW_ACTIVE =
-            "-fx-background-color: #faf5ff; -fx-border-color: #7c3aed; -fx-border-radius: 6; " +
+    private static final String HIST_ROW_ACTIVE = "-fx-background-color: #faf5ff; -fx-border-color: #7c3aed; -fx-border-radius: 6; "
+            +
             "-fx-background-radius: 6; -fx-padding: 6 8; -fx-cursor: hand;";
 
-    // ── preview pane styles ───────────────────────────────────────────────────────
-    private static final String PANE_BASE =
-            "-fx-background-color: #f8fafc; -fx-border-color: #e2e8f0; -fx-border-radius: 6; " +
+    // ── preview pane styles
+    // ───────────────────────────────────────────────────────
+    private static final String PANE_BASE = "-fx-background-color: #f8fafc; -fx-border-color: #e2e8f0; -fx-border-radius: 6; "
+            +
             "-fx-background-radius: 6; -fx-min-height: 190; -fx-max-height: 190;";
-    private static final String INPUT_PANE_HOVER =
-            "-fx-background-color: #eff6ff; -fx-border-color: #93c5fd; -fx-border-radius: 6; " +
+    private static final String INPUT_PANE_HOVER = "-fx-background-color: #eff6ff; -fx-border-color: #93c5fd; -fx-border-radius: 6; "
+            +
             "-fx-background-radius: 6; -fx-min-height: 190; -fx-max-height: 190;";
-    private static final String OUTPUT_PANE_HOVER =
-            "-fx-background-color: #f0fdf4; -fx-border-color: #86efac; -fx-border-radius: 6; " +
+    private static final String OUTPUT_PANE_HOVER = "-fx-background-color: #f0fdf4; -fx-border-color: #86efac; -fx-border-radius: 6; "
+            +
             "-fx-background-radius: 6; -fx-min-height: 190; -fx-max-height: 190;";
 
-    // ── FXML bindings ─────────────────────────────────────────────────────────────
-    @FXML private StackPane inputPreviewPane;
-    @FXML private StackPane outputPreviewPane;
-    @FXML private ImageView inputImageView;
-    @FXML private ImageView outputImageView;
-    @FXML private Label     inputPlaceholder;
-    @FXML private Label     outputPlaceholder;
+    // ── FXML bindings
+    // ─────────────────────────────────────────────────────────────
+    @FXML
+    private StackPane inputPreviewPane;
+    @FXML
+    private StackPane outputPreviewPane;
+    @FXML
+    private ImageView inputImageView;
+    @FXML
+    private ImageView outputImageView;
+    @FXML
+    private Label inputPlaceholder;
+    @FXML
+    private Label outputPlaceholder;
 
-    @FXML private Label lblInputFile;
-    @FXML private Label lblInputFormat;
-    @FXML private Label lblInputSize;
-    @FXML private Label lblInputDimensions;
-    @FXML private Label lblInputPixels;
+    @FXML
+    private Label lblInputFile;
+    @FXML
+    private Label lblInputFormat;
+    @FXML
+    private Label lblInputSize;
+    @FXML
+    private Label lblInputDimensions;
+    @FXML
+    private Label lblInputPixels;
 
-    @FXML private Label lblOutputFile;
-    @FXML private Label lblOutputFormat;
-    @FXML private Label lblOutputSize;
-    @FXML private Label lblOutputDimensions;
-    @FXML private Label lblOutputPixels;
+    @FXML
+    private Label lblOutputFile;
+    @FXML
+    private Label lblOutputFormat;
+    @FXML
+    private Label lblOutputSize;
+    @FXML
+    private Label lblOutputDimensions;
+    @FXML
+    private Label lblOutputPixels;
 
-    @FXML private VBox   systemInfoBox;
-    @FXML private VBox   wallTimeCard;
-    @FXML private Label  lblWallTime;
-    @FXML private VBox   metricsBox;
-    @FXML private VBox   historyBox;
-    @FXML private ComboBox<String> algorithmCombo;
-    @FXML private Label  lblStatus;
-    @FXML private Button btnChoose;
-    @FXML private Button btnProcess;
-    @FXML private Button btnSave;
-    @FXML private Button btnOpenInput;
-    @FXML private Button btnOpenOutput;
-    @FXML private Button btnReset;
-    @FXML private Button btnExportCsv;
-    @FXML private Button btnDeleteAll;
-    @FXML private Button btnDeleteSelected;
+    @FXML
+    private VBox systemInfoBox;
+    @FXML
+    private VBox wallTimeCard;
+    @FXML
+    private Label lblWallTime;
+    @FXML
+    private VBox metricsBox;
+    @FXML
+    private VBox historyBox;
+    @FXML
+    private ComboBox<String> algorithmCombo;
+    @FXML
+    private Label lblStatus;
+    @FXML
+    private Button btnChoose;
+    @FXML
+    private Button btnProcess;
+    @FXML
+    private Button btnSave;
+    @FXML
+    private Button btnOpenInput;
+    @FXML
+    private Button btnOpenOutput;
+    @FXML
+    private Button btnReset;
+    @FXML
+    private Button btnExportCsv;
+    @FXML
+    private Button btnDeleteAll;
+    @FXML
+    private Button btnDeleteSelected;
 
-    // ── state ─────────────────────────────────────────────────────────────────────
-    private File   selectedFile;
-    private File   outputFile;
+    // ── state
+    // ─────────────────────────────────────────────────────────────────────
+    private File selectedFile;
+    private File outputFile;
     private String sessionUuid;
-    private Path   uploadsBase;
+    private Path uploadsBase;
     private ImageData processedOutput;
     private String loadedHistoryUuid;
 
-    // ── lifecycle ─────────────────────────────────────────────────────────────────
+    // ── lifecycle
+    // ─────────────────────────────────────────────────────────────────
 
     @FXML
     private void initialize() {
@@ -153,10 +191,10 @@ public class MainController {
 
         // build the implementation registry — add new strategies here as they land
         int cores = Runtime.getRuntime().availableProcessors();
-        implementations.put("Sequential",                        new SequentialImageProcessingService());
-        implementations.put("Manual Threads (" + cores + ")",   new ManualThreadImageProcessingService());
-        implementations.put("Thread Pool (" + cores + ")",      new ThreadPoolImageProcessingService());
-        implementations.put("Fork / Join",                       new ForkJoinImageProcessingService());
+        implementations.put("Sequential", new SequentialImageProcessingService());
+        implementations.put("Manual Threads (" + cores + ")", new ManualThreadImageProcessingService());
+        implementations.put("Thread Pool (" + cores + ")", new ThreadPoolImageProcessingService());
+        implementations.put("Fork / Join", new ForkJoinImageProcessingService());
         implementations.put("CompletableFuture (" + cores + ")", new CompletableFutureImageProcessingService());
 
         algorithmCombo.getItems().addAll(implementations.keySet());
@@ -170,18 +208,20 @@ public class MainController {
         setupInputPreviewPane();
         setupOutputPreviewPane();
         setupButtonHover(btnChoose, btnProcess, btnSave, btnOpenInput, btnOpenOutput,
-                         btnReset, btnExportCsv, btnDeleteAll, btnDeleteSelected);
+                btnReset, btnExportCsv, btnDeleteAll, btnDeleteSelected);
 
         loadHistoryFromRepo();
     }
 
-    // ── handlers ──────────────────────────────────────────────────────────────────
+    // ── handlers
+    // ──────────────────────────────────────────────────────────────────
 
     @FXML
     private void handleChooseFile() {
         File file = openChooser("Select Image",
                 new FileChooser.ExtensionFilter("Images", "*.jpg", "*.jpeg", "*.png", "*.bmp", "*.gif"));
-        if (file == null) return;
+        if (file == null)
+            return;
 
         selectedFile = file;
 
@@ -195,15 +235,16 @@ public class MainController {
 
     @FXML
     private void handleProcess() {
-        if (selectedFile == null) return;
+        if (selectedFile == null)
+            return;
 
         sessionUuid = UUID.randomUUID().toString();
         btnProcess.setDisable(true);
         btnSave.setDisable(true);
         setStatus("Processing…", "#ea580c");
 
-        final File source    = selectedFile;
-        final String uuid    = sessionUuid;
+        final File source = selectedFile;
+        final String uuid = sessionUuid;
 
         final String algo = algorithmCombo.getValue();
 
@@ -228,7 +269,7 @@ public class MainController {
         task.setOnSucceeded(e -> {
             ProcessingResult r = task.getValue();
             processedOutput = r.getOutput();
-            outputFile      = r.getOutputFile();
+            outputFile = r.getOutputFile();
             outputPreviewPane.setCursor(Cursor.HAND);
             populateOutputLabels(processedOutput, outputFile);
             populateInfoBox(metricsBox, r.getStats().getMetrics());
@@ -241,16 +282,26 @@ public class MainController {
             btnOpenOutput.setDisable(false);
             setStatus("Done — " + algo + " — " + wallMs + " ms", "#16a34a");
 
+            var s = r.getStats();
             GenerationRecord rec = GenerationRecord.builder()
                     .uuid(uuid)
                     .algorithmName(algo)
                     .inputFilename(r.getInputFile().getName())
                     .outputFilename(r.getOutputFile().getName())
-                    .wallTimeMs(wallMs)
-                    .metrics(r.getStats().getMetrics())
                     .createdAt(Instant.now())
                     .imageWidth(r.getOutput().getWidth())
                     .imageHeight(r.getOutput().getHeight())
+                    .wallTimeMs(wallMs)
+                    .cpuTimeMs(s.getCpuTimeMs())
+                    .cpuEfficiencyPct(s.getCpuEfficiencyPct())
+                    .allocatedMb(s.getAllocatedMb())
+                    .heapBeforeMb(s.getHeapBeforeMb())
+                    .heapAfterMb(s.getHeapAfterMb())
+                    .gcCycles(s.getGcCycles())
+                    .gcPauseMs(s.getGcPauseMs())
+                    .peakThreads(s.getPeakThreads())
+                    .gcCollector(s.getGcCollector())
+                    .metrics(s.getMetrics())
                     .build();
             genRepo.save(rec);
             addHistoryCard(rec);
@@ -266,8 +317,8 @@ public class MainController {
 
     @FXML
     private void handleReset() {
-        selectedFile      = null;
-        sessionUuid       = null;
+        selectedFile = null;
+        sessionUuid = null;
         loadedHistoryUuid = null;
         inputImageView.setImage(null);
         inputPlaceholder.setVisible(true);
@@ -294,10 +345,12 @@ public class MainController {
 
     @FXML
     private void handleSave() {
-        if (processedOutput == null) return;
+        if (processedOutput == null)
+            return;
         File dest = saveChooser("Save Output Image",
                 new FileChooser.ExtensionFilter("JPEG Image", "*.jpg"));
-        if (dest == null) return;
+        if (dest == null)
+            return;
 
         ioService.save(processedOutput, dest);
         lblOutputFile.setText(dest.getName());
@@ -307,7 +360,8 @@ public class MainController {
         setStatus("Saved → " + dest.getName(), "#2563eb");
     }
 
-    // ── private helpers ───────────────────────────────────────────────────────────
+    // ── private helpers
+    // ───────────────────────────────────────────────────────────
 
     private void populateInputLabels(ImageMetadata meta) {
         lblInputFile.setText(meta.getName());
@@ -374,7 +428,7 @@ public class MainController {
         wallTimeCard.setVisible(false);
         wallTimeCard.setManaged(false);
         processedOutput = null;
-        outputFile      = null;
+        outputFile = null;
         outputPreviewPane.setCursor(Cursor.DEFAULT);
         outputPreviewPane.setStyle(PANE_BASE);
         btnSave.setDisable(true);
@@ -413,42 +467,50 @@ public class MainController {
             animateScale(inputPreviewPane, 1.02, 1.0);
         });
         inputPreviewPane.setOnMouseClicked(e -> {
-            if (selectedFile != null) openInViewer(selectedFile);
-            else handleChooseFile();
+            if (selectedFile != null)
+                openInViewer(selectedFile);
+            else
+                handleChooseFile();
         });
     }
 
     private void setupOutputPreviewPane() {
         outputPreviewPane.setOnMouseEntered(e -> {
-            if (outputFile == null) return;
+            if (outputFile == null)
+                return;
             outputPreviewPane.setStyle(OUTPUT_PANE_HOVER + " -fx-cursor: hand;");
             animateScale(outputPreviewPane, 1.0, 1.02);
         });
         outputPreviewPane.setOnMouseExited(e -> {
             outputPreviewPane.setStyle(PANE_BASE);
-            if (outputFile != null) animateScale(outputPreviewPane, 1.02, 1.0);
+            if (outputFile != null)
+                animateScale(outputPreviewPane, 1.02, 1.0);
         });
         outputPreviewPane.setOnMouseClicked(e -> {
-            if (outputFile != null) openInViewer(outputFile);
+            if (outputFile != null)
+                openInViewer(outputFile);
         });
     }
 
     private void setupButtonHover(Button... buttons) {
         for (Button btn : buttons) {
             btn.setOnMouseEntered(e -> animateScale(btn, 1.0, 1.04));
-            btn.setOnMouseExited(e ->  animateScale(btn, 1.04, 1.0));
+            btn.setOnMouseExited(e -> animateScale(btn, 1.04, 1.0));
         }
     }
 
     private void animateScale(Node node, double from, double to) {
         ScaleTransition st = new ScaleTransition(Duration.millis(120), node);
-        st.setFromX(from); st.setFromY(from);
-        st.setToX(to);     st.setToY(to);
+        st.setFromX(from);
+        st.setFromY(from);
+        st.setToX(to);
+        st.setToY(to);
         st.play();
     }
 
     private void openInViewer(File file) {
-        if (file == null || !file.exists()) return;
+        if (file == null || !file.exists())
+            return;
         try {
             Desktop.getDesktop().open(file);
         } catch (IOException e) {
@@ -495,7 +557,8 @@ public class MainController {
         }
         File dest = saveChooser("Export History as CSV",
                 new FileChooser.ExtensionFilter("CSV File", "*.csv"));
-        if (dest == null) return;
+        if (dest == null)
+            return;
         try {
             csvExporter.export(all, dest);
             setStatus("Exported " + all.size() + " records → " + dest.getName(), "#2563eb");
@@ -508,7 +571,8 @@ public class MainController {
     private void handleDeleteAll() {
         genRepo.deleteAll();
         historyBox.getChildren().clear();
-        if (loadedHistoryUuid != null) handleReset();
+        if (loadedHistoryUuid != null)
+            handleReset();
         setStatus("History cleared.", "#64748b");
     }
 
@@ -516,7 +580,8 @@ public class MainController {
     private void handleDeleteSelected() {
         var toRemove = historyBox.getChildren().stream()
                 .filter(node -> {
-                    if (!(node instanceof HBox row)) return false;
+                    if (!(node instanceof HBox row))
+                        return false;
                     return row.getChildren().stream()
                             .filter(c -> c instanceof CheckBox)
                             .map(c -> (CheckBox) c)
@@ -531,11 +596,13 @@ public class MainController {
             String uuid = (String) node.getUserData();
             if (uuid != null) {
                 genRepo.delete(uuid);
-                if (uuid.equals(loadedHistoryUuid)) deletedLoaded = true;
+                if (uuid.equals(loadedHistoryUuid))
+                    deletedLoaded = true;
             }
         }
         historyBox.getChildren().removeAll(toRemove);
-        if (deletedLoaded) handleReset();
+        if (deletedLoaded)
+            handleReset();
 
         if (!toRemove.isEmpty())
             setStatus("Deleted " + toRemove.size() + " history record(s).", "#64748b");
@@ -557,16 +624,20 @@ public class MainController {
 
         // hover — only when not the active item
         row.setOnMouseEntered(e -> {
-            if (!r.getUuid().equals(loadedHistoryUuid)) row.setStyle(HIST_ROW_HOVER);
+            if (!r.getUuid().equals(loadedHistoryUuid))
+                row.setStyle(HIST_ROW_HOVER);
         });
         row.setOnMouseExited(e -> {
-            if (!r.getUuid().equals(loadedHistoryUuid)) row.setStyle(HIST_ROW_BASE);
+            if (!r.getUuid().equals(loadedHistoryUuid))
+                row.setStyle(HIST_ROW_BASE);
         });
 
         // row click → load into UI (ignore clicks on checkbox or delete button)
         row.setOnMouseClicked(e -> {
-            if (e.getTarget() instanceof CheckBox) return;
-            if (e.getTarget() instanceof Button)  return;
+            if (e.getTarget() instanceof CheckBox)
+                return;
+            if (e.getTarget() instanceof Button)
+                return;
             loadHistoryItem(r);
         });
 
@@ -586,7 +657,8 @@ public class MainController {
             try {
                 thumb.setImage(new javafx.scene.image.Image(
                         outFile.toURI().toString(), 68, 52, true, true));
-            } catch (Exception ignored) {}
+            } catch (Exception ignored) {
+            }
         }
         // thumbnail click → open in OS viewer
         thumb.setOnMouseClicked(e -> {
@@ -635,16 +707,17 @@ public class MainController {
         // per-row delete button
         Button delBtn = new Button("✕");
         delBtn.setStyle("-fx-background-color: #fef2f2; -fx-text-fill: #dc2626; -fx-font-size: 10px; " +
-                        "-fx-font-weight: bold; -fx-background-radius: 4; -fx-border-color: #fecaca; " +
-                        "-fx-border-radius: 4; -fx-padding: 2 6; -fx-cursor: hand;");
+                "-fx-font-weight: bold; -fx-background-radius: 4; -fx-border-color: #fecaca; " +
+                "-fx-border-radius: 4; -fx-padding: 2 6; -fx-cursor: hand;");
         delBtn.setOnAction(e -> {
             boolean wasLoaded = r.getUuid().equals(loadedHistoryUuid);
             genRepo.delete(r.getUuid());
             historyBox.getChildren().remove(row);
-            if (wasLoaded) handleReset();
+            if (wasLoaded)
+                handleReset();
         });
         delBtn.setOnMouseEntered(e -> animateScale(delBtn, 1.0, 1.08));
-        delBtn.setOnMouseExited(e ->  animateScale(delBtn, 1.08, 1.0));
+        delBtn.setOnMouseExited(e -> animateScale(delBtn, 1.08, 1.0));
         // consume mouse click so it doesn't bubble to the row click handler
         delBtn.setOnMouseClicked(javafx.event.Event::consume);
 
@@ -654,7 +727,7 @@ public class MainController {
 
     private void loadHistoryItem(GenerationRecord r) {
         File inputFile = uploadsBase.resolve("input").resolve(r.getInputFilename()).toFile();
-        File outFile   = uploadsBase.resolve("output").resolve(r.getOutputFilename()).toFile();
+        File outFile = uploadsBase.resolve("output").resolve(r.getOutputFilename()).toFile();
 
         if (!inputFile.exists() && !outFile.exists()) {
             setStatus("Files for this history item no longer exist on disk.", "#dc2626");
@@ -713,28 +786,30 @@ public class MainController {
 
     private void refreshHistoryActiveStyle() {
         for (javafx.scene.Node n : historyBox.getChildren()) {
-            if (!(n instanceof HBox row)) continue;
+            if (!(n instanceof HBox row))
+                continue;
             String uuid = (String) row.getUserData();
             boolean active = loadedHistoryUuid != null && loadedHistoryUuid.equals(uuid);
             row.setStyle(active ? HIST_ROW_ACTIVE : HIST_ROW_BASE);
         }
     }
 
-    private static final DateTimeFormatter HIST_FMT =
-            DateTimeFormatter.ofPattern("MM/dd HH:mm").withZone(ZoneId.systemDefault());
+    private static final DateTimeFormatter HIST_FMT = DateTimeFormatter.ofPattern("MM/dd HH:mm")
+            .withZone(ZoneId.systemDefault());
 
     private String formatTimestamp(Instant instant) {
         return HIST_FMT.format(instant);
     }
 
-    // ── inner class ───────────────────────────────────────────────────────────────
+    // ── inner class
+    // ───────────────────────────────────────────────────────────────
 
     @Getter
     @AllArgsConstructor(staticName = "of")
     private static class ProcessingResult {
-        private final ImageData           output;
+        private final ImageData output;
         private final PerformanceSnapshot stats;
-        private final File                inputFile;
-        private final File                outputFile;
+        private final File inputFile;
+        private final File outputFile;
     }
 }

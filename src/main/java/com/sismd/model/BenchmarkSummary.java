@@ -2,7 +2,6 @@ package com.sismd.model;
 
 import lombok.Builder;
 import lombok.Getter;
-import lombok.ToString;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -16,7 +15,6 @@ import java.util.stream.Collectors;
  */
 @Getter
 @Builder
-@ToString
 public class BenchmarkSummary {
 
         private final List<BenchmarkResult> results;
@@ -104,5 +102,10 @@ public class BenchmarkSummary {
 
                 sb.append("═══════════════════════════════════════════════════════════\n");
                 return sb.toString();
+        }
+
+        @Override
+        public String toString() {
+                return render();
         }
 }

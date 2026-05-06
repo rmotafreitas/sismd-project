@@ -23,13 +23,8 @@ MAIN_CLASS="com.sismd.benchmark.BenchmarkRunner"
 #   SerialGC   — single-threaded; baseline for overhead comparison
 #   ParallelGC — throughput-oriented; maximizes batch processing speed
 # ──────────────────────────────────────────────────────────────────────────────
-declare -A GC_CONFIGS
-GC_CONFIGS=(
-    ["G1GC"]="-XX:+UseG1GC -XX:MaxGCPauseMillis=200"
-    ["ZGC"]="-XX:+UseZGC"
-    ["SerialGC"]="-XX:+UseSerialGC"
-    ["ParallelGC"]="-XX:+UseParallelGC"
-)
+GC_NAMES=(  "G1GC"                                    "ZGC"          "SerialGC"          "ParallelGC"          )
+GC_FLAGS=(  "-XX:+UseG1GC -XX:MaxGCPauseMillis=200"   "-XX:+UseZGC"  "-XX:+UseSerialGC"  "-XX:+UseParallelGC"  )
 
 echo "╔══════════════════════════════════════════════════════════════╗"
 echo "║      GC Tuning Benchmark — Comparing Garbage Collectors     ║"
@@ -38,8 +33,9 @@ echo ""
 
 mvn compile -q
 
-for gc_name in "${!GC_CONFIGS[@]}"; do
-    gc_flags="${GC_CONFIGS[$gc_name]}"
+for i in "${!GC_NAMES[@]}"; do
+    gc_name="${GC_NAMES[$i]}"
+    gc_flags="${GC_FLAGS[$i]}"
     out_dir="$RESULTS_BASE/$gc_name"
     mkdir -p "$out_dir"
 
@@ -52,8 +48,9 @@ for gc_name in "${!GC_CONFIGS[@]}"; do
             -Dexec.mainClass="$MAIN_CLASS" \
             -q 2>&1 | tee "$out_dir/console.log"
 
-    # Act — copy generated CSV + PNG charts into the GC-specific folder
+    # Act — copy generated CSV, summary, and PNG charts into the GC-specific folder
     [ -f results/benchmark.csv ] && cp results/benchmark.csv "$out_dir/"
+    [ -f results/summary.txt ]   && cp results/summary.txt   "$out_dir/"
     for png in results/*.png; do
         [ -f "$png" ] && cp "$png" "$out_dir/"
     done
@@ -65,7 +62,7 @@ done
 # Assert — summary
 echo "╔══════════════════════════════════════════════════════════════╗"
 echo "║  Done — compare results across:                             ║"
-for gc_name in "${!GC_CONFIGS[@]}"; do
+for gc_name in "${GC_NAMES[@]}"; do
     printf "║    %-56s ║\n" "$RESULTS_BASE/$gc_name/"
 done
 echo "╚══════════════════════════════════════════════════════════════╝"

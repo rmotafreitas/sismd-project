@@ -2,7 +2,6 @@ package com.sismd.model;
 
 import lombok.Builder;
 import lombok.Getter;
-import lombok.ToString;
 
 /**
  * Immutable value holding every metric captured for a single benchmark run
@@ -12,7 +11,6 @@ import lombok.ToString;
  */
 @Getter
 @Builder
-@ToString
 public class BenchmarkResult {
 
     private final String implName;
@@ -35,6 +33,10 @@ public class BenchmarkResult {
     private final double sysLoad;
     private final String gcCollector;
 
+    // CPU / allocation
+    private final double cpuTimeMs; // avg process-CPU time per measured run
+    private final double allocatedMb; // total bytes allocated across measured runs
+
     // ── computed fields ──────────────────────────────────────────────────────
 
     public long getPixels() {
@@ -43,6 +45,10 @@ public class BenchmarkResult {
 
     public double getHeapDeltaMb() {
         return heapAfterMb - heapBeforeMb;
+    }
+
+    public double getCpuEfficiencyPct() {
+        return (avgMs > 0) ? cpuTimeMs / avgMs * 100.0 : 0.0;
     }
 
     public double getSpeedup(double sequentialAvgMs) {
@@ -55,6 +61,7 @@ public class BenchmarkResult {
             "Implementation", "Threads", "ImageSize",
             "Width_px", "Height_px", "Pixels",
             "Avg_ms", "Min_ms", "Max_ms", "StdDev_ms", "Speedup",
+            "CpuTime_ms", "CpuEfficiency_pct", "Allocated_MB",
             "HeapBefore_MB", "HeapAfter_MB", "HeapDelta_MB",
             "GC_Cycles", "GC_Pause_ms", "Sys_Load", "GC_Collector"
     };
@@ -65,10 +72,11 @@ public class BenchmarkResult {
 
     public String toCsvRow(double sequentialAvgMs) {
         return String.format(
-                "%s,%d,%s,%d,%d,%d,%.3f,%.3f,%.3f,%.3f,%.2f,%.1f,%.1f,%.1f,%d,%d,%.2f,%s",
+                "%s,%d,%s,%d,%d,%d,%.3f,%.3f,%.3f,%.3f,%.2f,%.2f,%.1f,%.2f,%.1f,%.1f,%.1f,%d,%d,%.2f,%s",
                 implName, threadCount, sizeLabel,
                 width, height, getPixels(),
                 avgMs, minMs, maxMs, stdDevMs, getSpeedup(sequentialAvgMs),
+                cpuTimeMs, getCpuEfficiencyPct(), allocatedMb,
                 heapBeforeMb, heapAfterMb, getHeapDeltaMb(),
                 gcCycles, gcPauseMs, sysLoad, gcCollector);
     }
@@ -78,5 +86,11 @@ public class BenchmarkResult {
     public String toConsoleLine(double sequentialAvgMs) {
         return String.format("avg=%8.2f ms   min=%8.2f   max=%8.2f   σ=%6.2f   ×%.2f",
                 avgMs, minMs, maxMs, stdDevMs, getSpeedup(sequentialAvgMs));
+    }
+
+    @Override
+    public String toString() {
+        return String.format("BenchmarkResult{impl='%s', size='%s', threads=%d, avg=%.3fms}",
+                implName, sizeLabel, threadCount, avgMs);
     }
 }

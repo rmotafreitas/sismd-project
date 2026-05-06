@@ -17,6 +17,7 @@ import java.lang.management.GarbageCollectorMXBean;
 import java.lang.management.ManagementFactory;
 import java.lang.management.MemoryMXBean;
 import java.lang.management.OperatingSystemMXBean;
+import com.sun.management.ThreadMXBean;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDateTime;
@@ -112,9 +113,13 @@ public class BenchmarkRunner {
 
         MemoryMXBean mem = ManagementFactory.getMemoryMXBean();
         OperatingSystemMXBean os = ManagementFactory.getOperatingSystemMXBean();
+        com.sun.management.OperatingSystemMXBean sunOs = (com.sun.management.OperatingSystemMXBean) os;
+        ThreadMXBean tmx = (ThreadMXBean) ManagementFactory.getThreadMXBean();
 
         long heapBefore = mem.getHeapMemoryUsage().getUsed();
         GCSnapshot gcBefore = collectGCSnapshot();
+        long cpuNsBefore = sunOs.getProcessCpuTime();
+        long allocBytesBefore = allocatedBytes(tmx);
         long[] times = new long[MEASURED];
         double loadSum = 0;
 
@@ -129,6 +134,8 @@ public class BenchmarkRunner {
         // ── Assert (compute) ─────────────────────────────────────────────────
         long heapAfter = mem.getHeapMemoryUsage().getUsed();
         GCSnapshot gcAfter = collectGCSnapshot();
+        double cpuTimeMs = Math.max(0, sunOs.getProcessCpuTime() - cpuNsBefore) / 1_000_000.0 / MEASURED;
+        double allocatedMb = Math.max(0, allocatedBytes(tmx) - allocBytesBefore) / 1_048_576.0;
 
         var stats = LongStream.of(times).summaryStatistics();
         double avgMs = stats.getAverage() / 1_000_000.0;
@@ -146,6 +153,7 @@ public class BenchmarkRunner {
                 .implName(name).sizeLabel(sizeLabel).threadCount(threadCount)
                 .width(image.getWidth()).height(image.getHeight())
                 .avgMs(avgMs).minMs(minMs).maxMs(maxMs).stdDevMs(stdDev)
+                .cpuTimeMs(cpuTimeMs).allocatedMb(allocatedMb)
                 .heapBeforeMb(heapBefore / 1_048_576.0)
                 .heapAfterMb(heapAfter / 1_048_576.0)
                 .gcCycles(gcAfter.count() - gcBefore.count())
@@ -157,6 +165,16 @@ public class BenchmarkRunner {
 
     // ── GC snapshot
     // ───────────────────────────────────────────────────────────────
+
+    private static long allocatedBytes(ThreadMXBean tmx) {
+        long[] ids = tmx.getAllThreadIds();
+        long[] bytes = tmx.getThreadAllocatedBytes(ids);
+        long sum = 0;
+        for (long b : bytes)
+            if (b > 0)
+                sum += b;
+        return sum;
+    }
 
     public static GCSnapshot collectGCSnapshot() {
         long count = 0, timeMs = 0;
