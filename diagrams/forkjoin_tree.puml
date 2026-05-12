@@ -1,0 +1,42 @@
+@startuml
+skinparam monochrome true
+skinparam defaultFontName SansSerif
+skinparam defaultFontSize 12
+
+title ForkJoin Recursive Column Decomposition\n(Original image: 8192 columns, threshold = 50)
+
+left to right direction
+
+rectangle "Columns [0, 8192)\nHistogramTask" as root #FAFAFA {
+  rectangle "Left [0, 4096)\nfork()" as L1 #F0F0F0 {
+    rectangle "[0, 2048)\nfork()" as L2 {
+      rectangle "[0, 1024)\nfork()" as L3 {
+        rectangle "...\n≤ 50 cols\ncompute()" as L_LEAF
+      }
+      rectangle "[1024, 2048)\ncompute()" as L3_R {
+        rectangle "...\n≤ 50 cols\ncompute()" as L_LEAF2
+      }
+    }
+    rectangle "[2048, 4096)\ncompute()" as L2_R {
+      rectangle "...\n≤ 50 cols\ncompute()" as L_LEAF3
+    }
+  }
+  rectangle "Right [4096, 8192)\ncompute()" as R1 #F0F0F0 {
+    rectangle "[4096, 6144)\nfork()" as R2 {
+      rectangle "...\n≤ 50 cols" as R_LEAF1
+    }
+    rectangle "[6144, 8192)\ncompute()" as R2_R {
+      rectangle "...\n≤ 50 cols" as R_LEAF2
+    }
+  }
+}
+
+note bottom of root
+  ForkJoinPool.commonPool() — 11 worker threads.
+  Work-stealing: idle threads pull tasks
+  from busy threads' dequeues.
+  
+  ~164 tasks for 8192 cols / 50 threshold.
+  Each leaf: 50 cols × 4608 rows = 230,400 pixels.
+end note
+@enduml

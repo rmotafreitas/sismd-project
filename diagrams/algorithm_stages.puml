@@ -1,0 +1,37 @@
+@startuml
+skinparam monochrome true
+skinparam defaultFontName SansSerif
+skinparam defaultFontSize 13
+skinparam ArrowColor #333333
+skinparam ActivityBackgroundColor #F5F5F5
+skinparam ActivityBorderColor #666666
+
+title Histogram Equalization — Three-Stage Algorithm
+
+|Stage 1 — Build Histogram|
+start
+:Input image\n(packed int[], W×H);
+fork
+  :Thread 1 computes\npartial histogram\nfor columns [0, C₁);
+fork again
+  :Thread 2 computes\npartial histogram\nfor columns [C₁, C₂);
+fork again
+  :Thread N computes\npartial histogram\nfor columns [Cₙ₋₁, W);
+end fork
+:Main thread merges\nN partial histograms\n→ 256-bin global histogram;
+
+|Stage 2 — Cumulative Prefix Sum|
+:Sequential prefix sum\nover 256 bins\n(≈ 256 additions);
+
+|Stage 3 — Equalization|
+fork
+  :Thread 1 applies\nequalization mapping\nto columns [0, C₁);
+fork again
+  :Thread 2 applies\nequalization mapping\nto columns [C₁, C₂);
+fork again
+  :Thread N applies\nequalization mapping\nto columns [Cₙ₋₁, W);
+end fork
+:Output image\n(packed int[], W×H);
+
+stop
+@enduml

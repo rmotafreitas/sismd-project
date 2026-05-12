@@ -1,36 +1,51 @@
 ═══════════════════════════════════════════════════════════
   BENCHMARK SUMMARY
 ═══════════════════════════════════════════════════════════
-  Date           : 2026-05-06 01:03:49
+  Date           : 2026-05-11 00:16:29
   JVM            : 21.0.6
   CPU Cores      : 11
+  GC Collector   : G1 Young Generation + G1 Concurrent GC + G1 Old Generation
   Warmup runs    : 3
   Measured runs  : 10
   Total configs  : 88
 
-  Small(640x360)
-    Sequential baseline : 1.036 ms
-    Best parallel       : ForkJoin(threshold=50)              → 0.352 ms  (×2.94)
-    Worst parallel      : ManualThreads(t=1)                  → 2.929 ms
-    Average (all)       : 0.934 ms
+  ── Small(640x360) ──
+    Sequential baseline : 0.886 ms  σ=0.030 ms  cpu=1.9 ms  eff=211%
+    Best wall time      : ForkJoin(threshold=200)             → 0.309 ms  ×2.87  eff=438%  alloc=8.89 MB
+    Best CPU efficiency : ForkJoin(threshold=10)              → eff=978%  3.025 ms  ×0.29
+    Least allocation    : ManualThreads(t=1)                  → 8.83 MB
+    Worst wall time     : ForkJoin(threshold=10)              → 3.025 ms
+    Average (all)       : 0.905 ms
+    GC pressure (avg)   : 0 cycles  0 ms pause  9.03 MB alloc/run
 
-  Medium(1920x1080)
-    Sequential baseline : 7.545 ms
-    Best parallel       : ForkJoin(threshold=10)              → 1.986 ms  (×3.80)
-    Worst parallel      : ManualThreads(t=1)                  → 8.217 ms
-    Average (all)       : 3.471 ms
+  ── Medium(1920x1080) ──
+    Sequential baseline : 7.554 ms  σ=0.017 ms  cpu=7.6 ms  eff=100%
+    Best wall time      : ForkJoin(threshold=200)             → 1.647 ms  ×4.59  eff=688%  alloc=79.48 MB
+    Best CPU efficiency : ForkJoin(threshold=10)              → eff=909%  1.770 ms  ×4.27
+    Least allocation    : ManualThreads(t=1)                  → 79.14 MB
+    Worst wall time     : CompletableFuture(t=1)              → 8.309 ms
+    Average (all)       : 3.472 ms
+    GC pressure (avg)   : 0 cycles  0 ms pause  79.63 MB alloc/run
 
-  Large(4096x2304)
-    Sequential baseline : 38.405 ms
-    Best parallel       : ForkJoin(threshold=50)              → 6.418 ms  (×5.98)
-    Worst parallel      : ManualThreads(t=1)                  → 39.814 ms
-    Average (all)       : 15.909 ms
+  ── Large(4096x2304) ──
+    Sequential baseline : 35.294 ms  σ=0.268 ms  cpu=35.7 ms  eff=101%
+    Best wall time      : ForkJoin(threshold=10)              → 6.257 ms  ×5.64  eff=900%  alloc=371.98 MB
+    Least allocation    : ManualThreads(t=1)                  → 360.04 MB
+    Worst wall time     : ThreadPool(t=1)                     → 39.913 ms
+    Average (all)       : 15.419 ms
+    GC pressure (avg)   : 4 cycles  2 ms pause  360.90 MB alloc/run
 
-  Original(8192x4608)
-    Sequential baseline : 143.532 ms
-    Best parallel       : ForkJoin(threshold=10)              → 24.582 ms  (×5.84)
-    Worst parallel      : CompletableFuture(t=1)              → 164.727 ms
-    Average (all)       : 60.703 ms
+  ── Original(8192x4608) ──
+    Sequential baseline : 143.274 ms  σ=0.811 ms  cpu=144.8 ms  eff=101%
+    Best wall time      : ForkJoin(threshold=10)              → 24.741 ms  ×5.79  eff=904%  alloc=1463.95 MB
+    Least allocation    : ManualThreads(t=1)                  → 1440.04 MB
+    Worst wall time     : CompletableFuture(t=1)              → 155.249 ms
+    Average (all)       : 60.663 ms
+    GC pressure (avg)   : 10 cycles  5 ms pause  1441.65 MB alloc/run
 
-  OVERALL FASTEST: ForkJoin(threshold=50) on Small(640x360) → 0.352 ms (×2.94)
+  ── GLOBAL HIGHLIGHTS ──────────────────────────────────
+  Fastest overall     : ForkJoin(threshold=200)             on Small(640x360)       → 0.309 ms  ×2.87
+  Best CPU efficiency : ForkJoin(threshold=10)              on Small(640x360)       → 978%
+  Least GC pause      : ManualThreads(t=1)                  on Small(640x360)       → 0 ms
+  Least allocation    : ManualThreads(t=1)                  on Small(640x360)       → 8.83 MB
 ═══════════════════════════════════════════════════════════

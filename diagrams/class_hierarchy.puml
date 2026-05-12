@@ -1,0 +1,98 @@
+@startuml
+skinparam monochrome true
+skinparam defaultFontName SansSerif
+skinparam defaultFontSize 12
+skinparam ArrowColor #333333
+skinparam ClassBackgroundColor #FAFAFA
+skinparam ClassBorderColor #666666
+skinparam InterfaceBackgroundColor #F0F0F0
+skinparam InterfaceBorderColor #888888
+
+title Implementation Hierarchy
+
+interface ImageProcessingService <<interface>> {
+  + process(ImageData input): ImageData
+}
+
+class SequentialImageProcessingService {
+  - buildHistogram(img, w, h): int[]
+}
+note right of SequentialImageProcessingService
+  Baseline implementation.
+  Single-threaded, column-major iteration.
+  All others override stage 1 and 3.
+end note
+
+class ManualThreadImageProcessingService {
+  - numThreads: int
+  - buildHistogramParallel(img, w, h): int[]
+  - applyEqualizationParallel(...):  int[]
+}
+note right of ManualThreadImageProcessingService
+  Creates fresh Thread[] per call.
+  Each thread writes to its own int[256].
+  Zero contention — no locks or atomics.
+end note
+
+class ThreadPoolImageProcessingService {
+  - poolSize: int
+  - computeHistogramParallel(...): int[]
+  - applyEqualizationParallel(...): int[]
+}
+note right of ThreadPoolImageProcessingService
+  Executors.newFixedThreadPool per call.
+  Callable<int[]> for stage 1.
+  Runnable for stage 3.
+  pool.shutdown() in finally.
+end note
+
+class ForkJoinImageProcessingService {
+  - threshold: int
+  + HistogramTask (RecursiveTask<int[]>)
+  + EqualizationAction (RecursiveAction)
+}
+note right of ForkJoinImageProcessingService
+  Uses ForkJoinPool.commonPool().
+  Recursive divide-and-conquer.
+  Splits column range in half until ≤ threshold.
+  Work-stealing for load balance.
+end note
+
+class CompletableFutureImageProcessingService {
+  - partitions: int
+  - computeHistogramAsync(...): int[]
+  - applyEqualizationAsync(...): int[]
+}
+note right of CompletableFutureImageProcessingService
+  supplyAsync dispatches to fixed pool.
+  allOf() + thenApply() merges results.
+  Dedicated ExecutorService per call.
+end note
+
+ImageProcessingService <|-- SequentialImageProcessingService
+SequentialImageProcessingService <|-- ManualThreadImageProcessingService
+SequentialImageProcessingService <|-- ThreadPoolImageProcessingService
+SequentialImageProcessingService <|-- ForkJoinImageProcessingService
+SequentialImageProcessingService <|-- CompletableFutureImageProcessingService
+
+class ImageData {
+  - pixels: int[]
+  - width:  int
+  - height: int
+  + getPixel(x, y): int
+}
+note bottom of ImageData
+  Column-major: pixels[x*height + y]
+  4 bytes per pixel (packed RGB int)
+  vs ~32 bytes for separate R,G,B objects
+end note
+
+class HistogramUtils <<utility>> {
+  + luminosity(packedRgb): int
+  + equalize(cdf, total): int
+  + buildCumulativeHistogram(hist): int[]
+  + mergeHistograms(a, b): int[]
+  + grayPixel(lum): int
+  + equalizer(cumulative, total): IntUnaryOperator
+}
+@enduml
