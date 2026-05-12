@@ -1,0 +1,53 @@
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                    ACADEMIC INTEGRITY DECLARATION                            ║
+║              Código de Boas Práticas de Conduta — Article 8                  ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+  Project:  Histogram Equalization Parallel Processing in Java
+  Subject:  Sistemas Multinúcleo e Distribuídos (SISMD)
+  Course:   2025/26
+
+  Student:  Ricardo Ribeiro Vales da Mota Freitas
+  ID:       1221170
+  Email:    1221170@isep.ipp.pt
+
+  University:  Instituto Superior de Engenharia do Porto (ISEP)
+  Department:  Departamento de Engenharia Informática (DEI)
+
+  Date:     May 2026
+
+────────────────────────────────────────────────────────────────────────────────
+
+In accordance with the Código de Boas Práticas de Conduta of ISEP,
+dated 27 October 2020, I hereby declare, under the terms of Article 8,
+that the work submitted for evaluation in the curricular unit SISMD
+is entirely my own original work.
+
+All source code, benchmark configurations, experimental measurements,
+analysis, charts, and written documentation were produced exclusively
+for this curricular unit. Any external libraries, frameworks, or
+reference materials were consulted solely as supporting technical
+resources and are duly acknowledged through repository dependency
+declarations, official documentation citations, and standard Java API
+usage attribution.
+
+The experimental benchmark results presented in this project correspond
+to real executions performed on the described hardware and software
+environment. No data, measurements, charts, or statistical observations
+were fabricated, modified, or artificially manipulated.
+
+I understand that failure to submit this declaration will result in
+the work not being evaluated, and that submitting work in violation of
+this declaration may result in disciplinary proceedings under the
+applicable institutional regulations.
+
+────────────────────────────────────────────────────────────────────────────────
+
+  Signature:  Ricardo Ribeiro Vales da Mota Freitas
+
+  Date:       12 / 05 / 2026
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║  ISEP — Instituto Superior de Engenharia do Porto                            ║
+║  Código de Boas Práticas de Conduta — 27 October 2020                        ║
+╚══════════════════════════════════════════════════════════════════════════════╝

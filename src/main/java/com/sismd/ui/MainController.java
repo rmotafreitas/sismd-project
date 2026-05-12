@@ -50,6 +50,7 @@ import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.lang.management.ManagementFactory;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
@@ -172,6 +173,15 @@ public class MainController {
     @FXML
     private Button btnDeleteSelected;
 
+    @FXML
+    private Button btnDevOptions;
+    @FXML
+    private Label lblDevThreads;
+    @FXML
+    private Label lblDevThreshold;
+    @FXML
+    private Label lblDevGc;
+
     // ── state
     // ─────────────────────────────────────────────────────────────────────
     private File selectedFile;
@@ -181,21 +191,28 @@ public class MainController {
     private ImageData processedOutput;
     private String loadedHistoryUuid;
 
+    private int devThreadCount;
+    private int devForkJoinThreshold;
+    private final String devGcCollector;
+
     // ── lifecycle
     // ─────────────────────────────────────────────────────────────────
+
+    public MainController() {
+        devThreadCount = Runtime.getRuntime().availableProcessors();
+        devForkJoinThreshold = 50;
+        devGcCollector = ManagementFactory.getGarbageCollectorMXBeans().stream()
+                .map(gc -> gc.getName())
+                .reduce((a, b) -> a + " + " + b)
+                .orElse("Unknown");
+    }
 
     @FXML
     private void initialize() {
         uploadsBase = Path.of(System.getProperty("user.dir"), "uploads");
         genRepo = new FileGenerationRepository(uploadsBase);
 
-        // build the implementation registry — add new strategies here as they land
-        int cores = Runtime.getRuntime().availableProcessors();
-        implementations.put("Sequential", new SequentialImageProcessingService());
-        implementations.put("Manual Threads (" + cores + ")", new ManualThreadImageProcessingService());
-        implementations.put("Thread Pool (" + cores + ")", new ThreadPoolImageProcessingService());
-        implementations.put("Fork / Join", new ForkJoinImageProcessingService());
-        implementations.put("CompletableFuture (" + cores + ")", new CompletableFutureImageProcessingService());
+        buildImplementationRegistry();
 
         algorithmCombo.getItems().addAll(implementations.keySet());
         algorithmCombo.getSelectionModel().selectFirst();
@@ -203,12 +220,14 @@ public class MainController {
         algorithmCombo.valueProperty().addListener(
                 (obs, old, val) -> processingService = implementations.get(val));
 
+        refreshDevOptionsLabels();
+
         SystemInfoSnapshot info = systemInfoService.read();
         populateInfoBox(systemInfoBox, info.asMap());
         setupInputPreviewPane();
         setupOutputPreviewPane();
         setupButtonHover(btnChoose, btnProcess, btnSave, btnOpenInput, btnOpenOutput,
-                btnReset, btnExportCsv, btnDeleteAll, btnDeleteSelected);
+                btnReset, btnExportCsv, btnDeleteAll, btnDeleteSelected, btnDevOptions);
 
         loadHistoryFromRepo();
     }
@@ -358,6 +377,50 @@ public class MainController {
                 ImageMetadata.fromFile(dest, processedOutput.getWidth(), processedOutput.getHeight())
                         .getHumanSize());
         setStatus("Saved → " + dest.getName(), "#2563eb");
+    }
+
+    @FXML
+    private void handleDevOptions() {
+        DeveloperOptionsDialog dialog = new DeveloperOptionsDialog(devThreadCount, devForkJoinThreshold);
+        dialog.showAndWait().ifPresent(settings -> {
+            devThreadCount = settings.threadCount();
+            devForkJoinThreshold = settings.forkJoinThreshold();
+            rebuildImplementationRegistry();
+            refreshDevOptionsLabels();
+            setStatus("Developer options updated — threads=" + devThreadCount
+                    + ", threshold=" + devForkJoinThreshold, "#2563eb");
+        });
+    }
+
+    private void buildImplementationRegistry() {
+        implementations.clear();
+        implementations.put("Sequential", new SequentialImageProcessingService());
+        implementations.put("Manual Threads (" + devThreadCount + ")",
+                new ManualThreadImageProcessingService(devThreadCount));
+        implementations.put("Thread Pool (" + devThreadCount + ")",
+                new ThreadPoolImageProcessingService(devThreadCount));
+        implementations.put("Fork / Join",
+                new ForkJoinImageProcessingService(devForkJoinThreshold));
+        implementations.put("CompletableFuture (" + devThreadCount + ")",
+                new CompletableFutureImageProcessingService(devThreadCount));
+    }
+
+    private void rebuildImplementationRegistry() {
+        String selected = algorithmCombo.getValue();
+        buildImplementationRegistry();
+        algorithmCombo.getItems().setAll(implementations.keySet());
+        if (implementations.containsKey(selected)) {
+            algorithmCombo.setValue(selected);
+        } else {
+            algorithmCombo.getSelectionModel().selectFirst();
+            processingService = implementations.get(algorithmCombo.getValue());
+        }
+    }
+
+    private void refreshDevOptionsLabels() {
+        lblDevThreads.setText(String.valueOf(devThreadCount));
+        lblDevThreshold.setText(String.valueOf(devForkJoinThreshold));
+        lblDevGc.setText(devGcCollector);
     }
 
     // ── private helpers

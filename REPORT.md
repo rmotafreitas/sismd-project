@@ -1,5 +1,40 @@
 # Histogram Equalization Parallel Processing in Java
 
+## Project Report — Sistemas Multinúcleo e Distribuídos (SISMD)
+
+|                      |                                                                     |
+| -------------------- | ------------------------------------------------------------------- |
+| **University**       | Instituto Superior de Engenharia do Porto (ISEP)                    |
+| **Department**       | Departamento de Engenharia Informática (DEI)                        |
+| **Subject**          | Sistemas Multinúcleo e Distribuídos (SISMD)                         |
+| **Author**           | Ricardo Ribeiro Vales da Mota Freitas                               |
+| **Student ID**       | 1221170                                                             |
+| **Email**            | 1221170@isep.ipp.pt                                                 |
+| **Date**             | May 2026                                                            |
+
+---
+
+## Academic Integrity Declaration
+
+In accordance with the *Código de Boas Práticas de Conduta* of ISEP (27 October 2020),
+the author declares that this project was developed with academic integrity and in
+compliance with the institutional rules governing originality and ethical conduct in
+higher education, as prescribed in Article 8 of the aforementioned code.
+
+All source code, benchmark configurations, experimental analysis, and written
+documentation presented in this report were produced exclusively for the curricular
+unit. Any external references, libraries, frameworks, or documentation used
+throughout the development process were consulted solely as supporting technical
+material and are appropriately acknowledged through repository dependencies,
+official documentation references, or standard Java API usage.
+
+The experimental results reported in this document correspond to real executions
+performed on the described hardware and software environment. No benchmark values,
+measurements, charts, or statistical observations were fabricated or artificially
+manipulated.
+
+---
+
 ## Performance Analysis Report
 
 ---

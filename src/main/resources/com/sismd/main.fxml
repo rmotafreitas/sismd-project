@@ -189,6 +189,38 @@
                 <VBox fx:id="metricsBox" spacing="0" VBox.vgrow="ALWAYS"
                       style="-fx-background-color: #f8fafc; -fx-border-color: #e2e8f0; -fx-border-radius: 6;
                              -fx-background-radius: 6; -fx-padding: 8 10;"/>
+
+                <Separator style="-fx-opacity: 0.5;"/>
+
+                <Label text="DEVELOPER OPTIONS" style="-fx-text-fill: #94a3b8; -fx-font-size: 10px; -fx-font-weight: bold;"/>
+
+                <VBox spacing="2"
+                      style="-fx-background-color: #faf5ff; -fx-border-color: #ddd6fe; -fx-border-radius: 6;
+                             -fx-background-radius: 6; -fx-padding: 8 10;">
+                    <HBox spacing="4" alignment="CENTER_LEFT">
+                        <Label text="Threads" style="-fx-text-fill: #64748b; -fx-font-size: 10px;" minWidth="70"/>
+                        <Label fx:id="lblDevThreads" text="11"
+                               style="-fx-text-fill: #1e293b; -fx-font-size: 10px; -fx-font-weight: bold;"/>
+                    </HBox>
+                    <HBox spacing="4" alignment="CENTER_LEFT">
+                        <Label text="FJ Threshold" style="-fx-text-fill: #64748b; -fx-font-size: 10px;" minWidth="70"/>
+                        <Label fx:id="lblDevThreshold" text="50"
+                               style="-fx-text-fill: #1e293b; -fx-font-size: 10px; -fx-font-weight: bold;"/>
+                    </HBox>
+                    <HBox spacing="4" alignment="CENTER_LEFT">
+                        <Label text="GC" style="-fx-text-fill: #64748b; -fx-font-size: 10px;" minWidth="70"/>
+                        <Label fx:id="lblDevGc" text="—"
+                               style="-fx-text-fill: #ea580c; -fx-font-size: 10px; -fx-font-weight: bold;"
+                               wrapText="true"/>
+                    </HBox>
+                    <HBox alignment="CENTER_RIGHT" style="-fx-padding: 4 0 0 0;">
+                        <Button fx:id="btnDevOptions" text="Configure…" onAction="#handleDevOptions"
+                                maxWidth="Infinity" HBox.hgrow="ALWAYS"
+                                style="-fx-background-color: #7c3aed; -fx-text-fill: white; -fx-font-size: 10px;
+                                       -fx-font-weight: bold; -fx-background-radius: 5; -fx-border-radius: 5;
+                                       -fx-padding: 4 8; -fx-cursor: hand;"/>
+                    </HBox>
+                </VBox>
             </VBox>
 
             <!-- ── HISTORY PANEL (4th column) ── -->
